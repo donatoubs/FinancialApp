@@ -14,7 +14,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 
 from app.config import get_settings
-from app.routers import health, auth, accounts, cards, categories, transactions, dashboard, budgets
+from app.routers import health, auth, accounts, cards, categories, transactions, dashboard, budgets, webhooks
 from app.database import engine, SessionLocal, Base, check_db_connection
 from app.services import category_service
 import app.models  # Asegura que todos los modelos ORM se registren
@@ -120,6 +120,9 @@ app.include_router(dashboard.router, prefix="/api/v1")
 
 # Router de Presupuestos y Reportes en /api/v1/budgets
 app.include_router(budgets.router, prefix="/api/v1")
+
+# Router de Webhooks para iOS (Apple Wallet & DeUna) en /api/v1/webhooks
+app.include_router(webhooks.router, prefix="/api/v1")
 
 
 # ------------------------------------------------------------------------------

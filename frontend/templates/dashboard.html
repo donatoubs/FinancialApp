@@ -73,7 +73,10 @@
             <h2 class="fw-bold mb-1"><i class="bi bi-speedometer2 text-primary me-2"></i>Dashboard Financiero</h2>
             <p class="text-muted mb-0">Resumen consolidado de tu patrimonio, flujo de caja y salud crediticia en tiempo real.</p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-outline-dark px-3 py-2 rounded-3 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#webhookModal" id="btnOpenWebhookModal">
+                <i class="bi bi-phone-vibrate text-primary me-1"></i> Apple Wallet & DeUna
+            </button>
             <a href="/transactions" class="btn btn-primary px-3 py-2 rounded-3 fw-semibold shadow-sm">
                 <i class="bi bi-plus-circle me-1"></i> Nuevo Movimiento
             </a>
@@ -572,6 +575,249 @@ function renderRecentTransactions(transactions) {
     }).join('');
 }
 
-document.addEventListener('DOMContentLoaded', loadDashboard);
+// -----------------------------------------------------------------------------
+// Lógica para Integración de Apple Wallet & DeUna (Atajos de iOS)
+// -----------------------------------------------------------------------------
+let currentWebhookUrl = '';
+
+async function loadWebhookTokenInfo() {
+    const token = localStorage.getItem('financial_token');
+    if (!token) return;
+
+    try {
+        const res = await fetch('/api/v1/webhooks/my-token', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            currentWebhookUrl = data.webhook_url;
+            const input = document.getElementById('webhookUrlInput');
+            if (input) input.value = data.webhook_url;
+        }
+    } catch (e) {
+        console.error('Error al obtener webhook token:', e);
+    }
+}
+
+async function copyWebhookUrl() {
+    const input = document.getElementById('webhookUrlInput');
+    if (!input || !input.value) return;
+    try {
+        await navigator.clipboard.writeText(input.value);
+        const copyBtn = document.getElementById('btnCopyWebhook');
+        if (copyBtn) {
+            const origText = copyBtn.innerHTML;
+            copyBtn.innerHTML = '<i class="bi bi-check2"></i> ¡Copiado!';
+            copyBtn.classList.replace('btn-outline-primary', 'btn-success');
+            setTimeout(() => {
+                copyBtn.innerHTML = origText;
+                copyBtn.classList.replace('btn-success', 'btn-outline-primary');
+            }, 2500);
+        }
+    } catch (err) {
+        input.select();
+        document.execCommand('copy');
+    }
+}
+
+async function regenerateWebhookToken() {
+    if (!confirm('¿Deseas generar un nuevo token? Deberás actualizar la URL en el atajo de tu iPhone.')) return;
+    const token = localStorage.getItem('financial_token');
+    if (!token) return;
+
+    try {
+        const res = await fetch('/api/v1/webhooks/regenerate-token', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            currentWebhookUrl = data.webhook_url;
+            document.getElementById('webhookUrlInput').value = data.webhook_url;
+            alert('¡Token regenerado exitosamente!');
+        }
+    } catch (e) {
+        alert('Error al regenerar token.');
+    }
+}
+
+async function testWebhookSimulated(type = 'apple_pay') {
+    const resultBox = document.getElementById('webhookTestResult');
+    if (!currentWebhookUrl) {
+        alert('Primero carga la URL del webhook.');
+        return;
+    }
+
+    resultBox.classList.remove('d-none', 'alert-danger', 'alert-success');
+    resultBox.classList.add('alert-info');
+    resultBox.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando simulación...';
+
+    const payload = type === 'apple_pay' 
+        ? {
+            amount: 3.75,
+            merchant: "Supermaxi La Carolina",
+            card: "Visa",
+            transaction_type: "EXPENSE",
+            notes: "Prueba de simulación de Apple Pay"
+        }
+        : {
+            raw_text: "DeUna: Pagaste $2.50 a Cafetería Dulce Aroma",
+            source: "deuna",
+            notes: "Prueba de simulación de DeUna"
+        };
+
+    try {
+        const res = await fetch(currentWebhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            resultBox.classList.replace('alert-info', 'alert-success');
+            resultBox.innerHTML = `<strong>¡Éxito!</strong> ${data.message} <br><small class="text-muted">Categoría asignada: <b>${data.category}</b> &bull; Medio: <b>${data.account_or_card}</b></small>`;
+            // Recargar datos del dashboard
+            setTimeout(loadDashboard, 1000);
+        } else {
+            resultBox.classList.replace('alert-info', 'alert-danger');
+            resultBox.textContent = `Error: ${data.detail || 'No se pudo procesar.'}`;
+        }
+    } catch (err) {
+        resultBox.classList.replace('alert-info', 'alert-danger');
+        resultBox.textContent = `Error de conexión: ${err.message}`;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadDashboard();
+    loadWebhookTokenInfo();
+});
 </script>
+
+<!-- MODAL DE INTEGRACIÓN: APPLE WALLET & DEUNA -->
+<div class="modal fade" id="webhookModal" tabindex="-1" aria-labelledby="webhookModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom px-4 py-3 bg-light rounded-top-4">
+                <div class="d-flex align-items-center">
+                    <div class="p-2 rounded-3 bg-primary-subtle text-primary me-3">
+                        <i class="bi bi-phone-vibrate fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="webhookModalLabel">Automatización con Apple Wallet & DeUna</h5>
+                        <span class="text-muted small">Registra tus compras automáticamente desde tu iPhone con Atajos</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Tu Webhook URL Personal -->
+                <div class="card bg-light border-0 rounded-3 p-3 mb-4">
+                    <label class="form-label small fw-bold text-uppercase text-secondary mb-2">
+                        <i class="bi bi-link-45deg me-1"></i>Tu Enlace Seguro de Webhook (URL Personal)
+                    </label>
+                    <div class="input-group mb-2">
+                        <input type="text" id="webhookUrlInput" class="form-control font-monospace small bg-white" readonly value="Cargando tu enlace...">
+                        <button class="btn btn-outline-primary fw-semibold px-3" type="button" id="btnCopyWebhook" onclick="copyWebhookUrl()">
+                            <i class="bi bi-clipboard me-1"></i> Copiar
+                        </button>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="very-small text-muted"><i class="bi bi-shield-check text-success me-1"></i>URL cifrada con HTTPS y tu token personal de acceso 24/7.</span>
+                        <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 very-small text-secondary" onclick="regenerateWebhookToken()">
+                            <i class="bi bi-arrow-repeat me-1"></i>Regenerar Token
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Pestañas de Instrucciones -->
+                <ul class="nav nav-pills nav-fill mb-3" id="webhookTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-semibold" id="apple-tab" data-bs-toggle="pill" data-bs-target="#apple-pane" type="button" role="tab">
+                            <i class="bi bi-apple me-1"></i> Apple Wallet (Apple Pay)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-semibold" id="deuna-tab" data-bs-toggle="pill" data-bs-target="#deuna-pane" type="button" role="tab">
+                            <i class="bi bi-lightning-charge me-1"></i> DeUna (Ecuador)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-semibold" id="test-tab" data-bs-toggle="pill" data-bs-target="#test-pane" type="button" role="tab">
+                            <i class="bi bi-play-circle me-1"></i> Probar en Vivo
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content border rounded-3 p-3 bg-white" id="webhookTabContent">
+                    <!-- Tab 1: Apple Wallet -->
+                    <div class="tab-pane fade show active" id="apple-pane" role="tabpanel">
+                        <h6 class="fw-bold text-dark mb-2"><i class="bi bi-check2-circle text-success me-1"></i>Configuración en 1 minuto en tu iPhone:</h6>
+                        <ol class="small text-secondary ps-3 mb-0" style="line-height: 1.8;">
+                            <li>Abre la aplicación <b>Atajos (Shortcuts)</b> en tu iPhone.</li>
+                            <li>Toca la pestaña inferior <b>"Automatización"</b> y luego el botón <b>"+"</b> (arriba a la derecha).</li>
+                            <li>Baja y selecciona el disparador <b>"Transacción"</b> (icono de Apple Pay).</li>
+                            <li>En tarjeta, elige <i>"Cualquier tarjeta"</i> (o tu tarjeta específica). Marca <b>"Ejecutar inmediatamente"</b> y desmarca <i>"Preguntar antes de ejecutar"</i>.</li>
+                            <li>Toca <b>"Siguiente"</b> ➔ <b>"Nueva automatización en blanco"</b> y agrega la acción: <b>"Obtener contenido de URL"</b>.</li>
+                            <li>Configura la acción así:
+                                <ul class="mt-1">
+                                    <li><b>URL</b>: Pega tu enlace copiado arriba.</li>
+                                    <li><b>Método</b>: Cambia a <code>POST</code>.</li>
+                                    <li><b>Solicitar cuerpo</b>: Selecciona <code>JSON</code>.</li>
+                                    <li>Agrega 3 campos:
+                                        <br>&bull; Clave <code>amount</code> ➔ Valor: Selecciona la variable <b>Monto</b> de la transacción.
+                                        <br>&bull; Clave <code>merchant</code> ➔ Valor: Selecciona la variable <b>Establecimiento</b>.
+                                        <br>&bull; Clave <code>card</code> ➔ Valor: Selecciona la variable <b>Tarjeta</b>.
+                                    </li>
+                                </ul>
+                            </li>
+                            <li>Toca <b>"Listo"</b>. ¡Cada compra que hagas con tu iPhone o Apple Watch se registrará sola!</li>
+                        </ol>
+                    </div>
+
+                    <!-- Tab 2: DeUna -->
+                    <div class="tab-pane fade" id="deuna-pane" role="tabpanel">
+                        <h6 class="fw-bold text-dark mb-2"><i class="bi bi-lightning text-warning me-1"></i>Para pagos y cobros de DeUna:</h6>
+                        <p class="small text-secondary mb-3">
+                            Puedes enviar el texto de las notificaciones de DeUna o usar un Atajo rápido para dictarle a Siri o escribir el monto.
+                        </p>
+                        <div class="p-3 bg-light rounded-3 small">
+                            <span class="fw-semibold d-block text-dark mb-1">Ejemplo de envío simple en JSON:</span>
+                            <code>
+                                {<br>
+                                &nbsp;&nbsp;"raw_text": "DeUna: Pagaste $4.50 a Cafetería Don Juan",<br>
+                                &nbsp;&nbsp;"source": "deuna"<br>
+                                }
+                            </code>
+                            <p class="text-muted very-small mt-2 mb-0">
+                                Nuestro servidor detecta automáticamente el monto ($4.50), el comercio ("Cafetería Don Juan"), asigna la categoría de Alimentación y descuenta de tu cuenta bancaria de Banco Pichincha.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: Probar en Vivo -->
+                    <div class="tab-pane fade" id="test-pane" role="tabpanel">
+                        <h6 class="fw-bold text-dark mb-2">Simula un pago para verificar la conexión:</h6>
+                        <p class="small text-secondary mb-3">
+                            Haz clic en cualquiera de los botones para enviar un pago de prueba directo a tu servidor en la nube y verificar que tu webhook funciona al 100%.
+                        </p>
+                        <div class="d-flex gap-2 flex-wrap mb-3">
+                            <button type="button" class="btn btn-outline-dark btn-sm px-3 rounded-pill fw-semibold" onclick="testWebhookSimulated('apple_pay')">
+                                <i class="bi bi-apple me-1"></i> Simular Apple Pay ($3.75 en Supermaxi)
+                            </button>
+                            <button type="button" class="btn btn-outline-warning text-dark btn-sm px-3 rounded-pill fw-semibold" onclick="testWebhookSimulated('deuna')">
+                                <i class="bi bi-lightning-charge me-1"></i> Simular DeUna ($2.50 en Cafetería)
+                            </button>
+                        </div>
+                        <div id="webhookTestResult" class="alert d-none small mb-0" role="alert"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top px-4 py-3 bg-light rounded-bottom-4">
+                <button type="button" class="btn btn-secondary rounded-3 px-4" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
