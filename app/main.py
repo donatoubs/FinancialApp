@@ -48,6 +48,13 @@ async def lifespan(app: FastAPI):
         logger.info("Base de datos conectada correctamente. Creando tablas si no existen...")
         try:
             Base.metadata.create_all(bind=engine)
+
+            # Migración automática segura para columnas nuevas en tablas existentes
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS webhook_token VARCHAR(64);"))
+                conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_webhook_token ON users (webhook_token);"))
+                conn.commit()
+
             logger.info("Esquemas de base de datos verificados y sincronizados.")
             
             # Sembrar categorías predeterminadas
