@@ -1,0 +1,687 @@
+{% extends "base.html" %}
+
+{% block title %}Tarjetas de Crédito y Débito - FinancialApp{% endblock %}
+
+{% block extra_head %}
+<style>
+/* Estilos visuales de tarjeta plástica */
+.credit-card-ui {
+    border-radius: 18px;
+    padding: 24px;
+    color: #ffffff;
+    min-height: 240px;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.credit-card-ui:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.22);
+}
+.credit-card-ui::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 250px;
+    height: 250px;
+    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+.card-chip {
+    width: 44px;
+    height: 32px;
+    background: linear-gradient(135deg, #ffd700 0%, #b8860b 100%);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    display: inline-block;
+}
+.card-number-display {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1.25rem;
+    letter-spacing: 3px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Navbar Superior -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm py-3">
+    <div class="container">
+        <a class="navbar-brand fw-bold d-flex align-items-center" href="/">
+            <img src="/static/img/logo.png" alt="Logo" height="34" class="me-2 rounded-2">
+            FinancialApp
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
+                <li class="nav-item">
+                    <a class="nav-link" href="/"><i class="bi bi-house me-1"></i> Inicio</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/dashboard"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/accounts"><i class="bi bi-bank me-1"></i> Cuentas</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active fw-semibold" href="/cards"><i class="bi bi-credit-card me-1"></i> Tarjetas</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/transactions"><i class="bi bi-arrow-left-right me-1"></i> Movimientos</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/budgets"><i class="bi bi-pie-chart me-1"></i> Presupuestos</a>
+                </li>
+            </ul>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-light small">
+                    <i class="bi bi-person-circle text-primary me-1"></i>
+                    <strong id="navUserName">Usuario</strong> (<span id="navUserCurrency" class="badge bg-secondary">USD</span>)
+                </span>
+                <button id="logoutBtn" class="btn btn-outline-danger btn-sm px-3 rounded-3">
+                    <i class="bi bi-box-arrow-right me-1"></i> Salir
+                </button>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="container py-5">
+    <!-- Encabezado y Botón Crear -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-credit-card-2-front text-primary me-2"></i>Mis Tarjetas de Crédito y Débito</h2>
+            <p class="text-muted mb-0">Controla tus límites, consumos, fechas de corte y próximos vencimientos de pago.</p>
+        </div>
+        <div>
+            <button class="btn btn-primary px-4 py-2 rounded-3 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#createCardModal">
+                <i class="bi bi-plus-circle me-1"></i> Nueva Tarjeta
+            </button>
+        </div>
+    </div>
+
+    <!-- Alertas globales -->
+    <div id="globalAlert" class="alert d-none" role="alert"></div>
+
+    <!-- Resumen KPI de Crédito -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 bg-white p-3 h-100">
+                <span class="text-muted small fw-semibold">Límite Total de Crédito</span>
+                <h4 class="fw-bold text-primary mb-0 mt-1" id="kpiTotalLimit">$0.00</h4>
+                <span class="text-secondary very-small" id="kpiCountCredit">0 tarjetas de crédito</span>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 bg-white p-3 h-100">
+                <span class="text-muted small fw-semibold">Deuda Total de Tarjetas</span>
+                <h4 class="fw-bold text-danger mb-0 mt-1" id="kpiTotalDebt">$0.00</h4>
+                <span class="text-secondary very-small">Saldo utilizado por pagar</span>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 bg-white p-3 h-100">
+                <span class="text-muted small fw-semibold">Crédito Disponible Total</span>
+                <h4 class="fw-bold text-success mb-0 mt-1" id="kpiTotalAvailable">$0.00</h4>
+                <span class="text-secondary very-small">Cupo libre para compras</span>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 bg-white p-3 h-100">
+                <span class="text-muted small fw-semibold">Utilización Global</span>
+                <div class="d-flex align-items-center justify-content-between mt-1">
+                    <h4 class="fw-bold mb-0" id="kpiUtilizationRate">0%</h4>
+                    <span id="kpiHealthBadge" class="badge bg-success-subtle text-success">Saludable</span>
+                </div>
+                <div class="progress mt-2" style="height: 6px;">
+                    <div id="kpiProgressBar" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros rápidos -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-primary active filter-card-btn" data-filter="all">Todas</button>
+            <button class="btn btn-sm btn-outline-secondary filter-card-btn" data-filter="credit">Solo Crédito</button>
+            <button class="btn btn-sm btn-outline-secondary filter-card-btn" data-filter="debit">Solo Débito</button>
+        </div>
+    </div>
+
+    <!-- Grid de Tarjetas -->
+    <div class="row g-4" id="cardsGrid">
+        <div class="col-12 text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando tarjetas...</span>
+            </div>
+            <p class="text-muted mt-2 small">Cargando tus tarjetas...</p>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: CREAR TARJETA -->
+<div class="modal fade" id="createCardModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-credit-card text-primary me-2"></i>Registrar Nueva Tarjeta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="createCardForm">
+                <div class="modal-body pt-3">
+                    <div id="createCardAlert" class="alert d-none" role="alert"></div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Nombre de la Tarjeta *</label>
+                            <input type="text" class="form-control" id="cardName" placeholder="Ej: Visa Signature Miles" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Banco / Emisor (Ecuador) *</label>
+                            <select class="form-select" id="cardBank" required onchange="handleCardBankChange(this, 'cardColor')">
+                                <option value="" disabled selected>Selecciona una entidad...</option>
+                                <option value="Banco Pichincha" data-color="#ffdd00">Banco Pichincha</option>
+                                <option value="Banco Guayaquil" data-color="#e30613">Banco Guayaquil</option>
+                                <option value="Banco del Pacífico" data-color="#005691">Banco del Pacífico</option>
+                                <option value="Produbanco" data-color="#00833e">Produbanco</option>
+                                <option value="Banco Bolivariano" data-color="#007236">Banco Bolivariano</option>
+                                <option value="Banco Internacional" data-color="#e05206">Banco Internacional</option>
+                                <option value="Banco del Austro" data-color="#7c1c2b">Banco del Austro</option>
+                                <option value="Banco Solidario" data-color="#ef7c00">Banco Solidario</option>
+                                <option value="Banco General Rumiñahui" data-color="#004080">Banco General Rumiñahui</option>
+                                <option value="Banco de Loja" data-color="#ffb600">Banco de Loja</option>
+                                <option value="Diners Club Ecuador" data-color="#003b6f">Diners Club Ecuador</option>
+                                <option value="Otro Banco / Emisor" data-color="#334155">Otro Banco / Emisor</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Tipo de Tarjeta *</label>
+                            <select class="form-select" id="cardType" required onchange="toggleCreditFields('create')">
+                                <option value="credit" selected>Crédito</option>
+                                <option value="debit">Débito</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Franquicia / Marca *</label>
+                            <select class="form-select" id="cardBrand" required>
+                                <option value="Visa" selected>Visa</option>
+                                <option value="Mastercard">Mastercard</option>
+                                <option value="Diners Club">Diners Club</option>
+                                <option value="American Express">American Express</option>
+                                <option value="Discover">Discover</option>
+                                <option value="Otra">Otra</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Últimos 4 Dígitos *</label>
+                            <input type="text" class="form-control font-monospace" id="cardLast4" placeholder="1234" maxlength="4" pattern="^\d{4}$" required>
+                            <div class="form-text very-small">Solo 4 dígitos. Nunca ingreses PIN ni CVV.</div>
+                        </div>
+                    </div>
+
+                    <!-- Campos exclusivos de Crédito -->
+                    <div id="creditFieldsContainer">
+                        <div class="p-3 bg-light rounded-3 mb-3 border">
+                            <h6 class="fw-semibold text-primary mb-3"><i class="bi bi-graph-up me-1"></i> Parámetros de Crédito</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold">Límite / Cupo de Crédito (USD) *</label>
+                                    <input type="number" step="0.01" min="0" class="form-control" id="cardLimit" placeholder="1500.00">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold">Deuda Actual / Saldo Utilizado (USD)</label>
+                                    <input type="number" step="0.01" min="0" class="form-control" id="cardCurrentBalance" placeholder="0.00" >
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold">Día de Corte</label>
+                                    <input type="number" min="1" max="31" class="form-control" id="cardCutoffDay" placeholder="Día (ej. 15)">
+                                    <div class="form-text very-small">Día del mes que cierra el ciclo.</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold">Día Límite de Pago</label>
+                                    <input type="number" min="1" max="31" class="form-control" id="cardDueDay" placeholder="Día (ej. 5)">
+                                    <div class="form-text very-small">Día límite para pagar sin mora.</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold">Tasa Interés Anual (%)</label>
+                                    <input type="number" step="0.01" min="0" max="100" class="form-control" id="cardInterestRate" placeholder="16.50" value="0.00">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Cuenta Bancaria Vinculada (Opcional)</label>
+                            <select class="form-select" id="cardLinkedAccount"> 
+                                                                
+                                <option value="">Sin cuenta vinculada</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Color de la Tarjeta</label>
+                            <input type="color" class="form-control form-control-color w-100" id="cardColor" value="#003b6f">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-3 px-4 fw-semibold" id="createCardSubmitBtn">
+                        <span id="createCardSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
+                        Guardar Tarjeta
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: REGISTRAR COMPRA O PAGO DE TARJETA (AJUSTAR SALDO) -->
+<div class="modal fade" id="adjustCardModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-wallet2 text-primary me-2"></i>Actualizar Saldo / Deuda</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="adjustCardForm">
+                <input type="hidden" id="adjustCardId">
+                <div class="modal-body pt-3">
+                    <p class="small text-muted mb-3" id="adjustCardInfo">Ajustando tarjeta...</p>
+                    <div id="adjustCardAlert" class="alert d-none" role="alert"></div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Tipo de Operación</label>
+                        <select class="form-select" id="adjustOperationType" onchange="handleOperationTypeChange()">
+                            <option value="delta_purchase">Registrar Consumo / Compra (+ Suma deuda)</option>
+                            <option value="delta_payment">Registrar Pago a Tarjeta (- Resta deuda)</option>
+                            <option value="set_total">Fijar Nuevo Saldo Total Utilizado</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold" id="adjustAmountLabel">Monto (USD) *</label>
+                        <input type="number" step="0.01" min="0" class="form-control" id="adjustCardAmount" placeholder="0.00" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Motivo o Descripción</label>
+                        <input type="text" class="form-control" id="adjustCardReason" placeholder="Ej: Compra supermercado, Pago mensual de tarjeta">
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-3 px-4 fw-semibold" id="adjustCardSubmitBtn">Actualizar Deuda</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let allCards = [];
+let allBankAccounts = [];
+const token = localStorage.getItem('financial_token');
+const userJson = localStorage.getItem('financial_user');
+
+if (!token || !userJson) {
+    window.location.href = '/login';
+}
+
+const user = JSON.parse(userJson || '{}');
+document.getElementById('navUserName').textContent = user.full_name || 'Usuario';
+document.getElementById('navUserCurrency').textContent = user.currency_preference || 'USD';
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    localStorage.removeItem('financial_token');
+    localStorage.removeItem('financial_user');
+    window.location.href = '/login';
+});
+
+async function authFetch(url, options = {}) {
+    options.headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${token}`
+    };
+    const res = await fetch(url, options);
+    if (res.status === 401) {
+        localStorage.clear();
+        window.location.href = '/login';
+        throw new Error('Sesión expirada');
+    }
+    return res;
+}
+
+// Cargar Cuentas para vincular
+async function loadBankAccountsForSelect() {
+    try {
+        const res = await authFetch('/api/v1/accounts?only_active=true');
+        if (res.ok) {
+            allBankAccounts = await res.json();
+            const select = document.getElementById('cardLinkedAccount');
+            select.innerHTML = '<option value="">Sin cuenta vinculada</option>';
+            allBankAccounts.forEach(acc => {
+                select.innerHTML += `<option value="${acc.id}">${acc.name} (${acc.bank_name} - ${acc.currency})</option>`;
+            });
+        }
+    } catch (e) {
+        console.warn('No se pudieron cargar cuentas:', e);
+    }
+}
+
+// Cargar Tarjetas y Métricas
+async function loadCards() {
+    try {
+        const res = await authFetch('/api/v1/cards/summary');
+        if (!res.ok) throw new Error('Error al cargar tarjetas');
+        const summary = await res.json();
+        allCards = summary.cards;
+
+        // Actualizar KPIs
+        document.getElementById('kpiTotalLimit').textContent = `$${parseFloat(summary.total_credit_limit).toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+        document.getElementById('kpiTotalDebt').textContent = `$${parseFloat(summary.total_credit_debt).toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+        document.getElementById('kpiTotalAvailable').textContent = `$${parseFloat(summary.total_credit_available).toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+        document.getElementById('kpiCountCredit').textContent = `${summary.total_credit_cards} de crédito / ${summary.total_debit_cards} débito`;
+
+        const rate = summary.overall_utilization_rate;
+        document.getElementById('kpiUtilizationRate').textContent = `${rate}%`;
+        const bar = document.getElementById('kpiProgressBar');
+        const badge = document.getElementById('kpiHealthBadge');
+        bar.style.width = `${Math.min(100, rate)}%`;
+
+        if (rate <= 30) {
+            badge.className = 'badge bg-success-subtle text-success';
+            badge.textContent = 'Saludable (<30%)';
+            bar.className = 'progress-bar bg-success';
+        } else if (rate <= 60) {
+            badge.className = 'badge bg-warning-subtle text-warning';
+            badge.textContent = 'Moderada (30-60%)';
+            bar.className = 'progress-bar bg-warning';
+        } else {
+            badge.className = 'badge bg-danger-subtle text-danger';
+            badge.textContent = 'Riesgo Alto (>60%)';
+            bar.className = 'progress-bar bg-danger';
+        }
+
+        renderCards(allCards);
+    } catch (err) {
+        document.getElementById('cardsGrid').innerHTML = `
+            <div class="col-12 text-center py-4">
+                <div class="alert alert-danger d-inline-block px-4">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> ${err.message}
+                </div>
+            </div>`;
+    }
+}
+
+function renderCards(cards) {
+    const grid = document.getElementById('cardsGrid');
+    if (!cards || cards.length === 0) {
+        grid.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <div class="p-5 bg-white rounded-4 shadow-sm border">
+                    <i class="bi bi-credit-card-2-front fs-1 text-muted mb-3 d-block"></i>
+                    <h5 class="fw-bold">No tienes tarjetas registradas</h5>
+                    <p class="text-muted small">Registra tus tarjetas de crédito o débito de Banco Pichincha, Guayaquil, Diners Club u otros bancos.</p>
+                    <button class="btn btn-primary rounded-3 px-4" data-bs-toggle="modal" data-bs-target="#createCardModal">
+                        <i class="bi bi-plus-circle me-1"></i> Registrar mi primera tarjeta
+                    </button>
+                </div>
+            </div>`;
+        return;
+    }
+
+    grid.innerHTML = cards.map(c => {
+        const isCredit = c.card_type === 'credit';
+        const utilRate = c.utilization_percentage || 0;
+        let utilColor = 'success';
+        if (utilRate > 60) utilColor = 'danger';
+        else if (utilRate > 30) utilColor = 'warning';
+
+        return `
+        <div class="col-md-6 col-lg-6 col-xl-4">
+            <div class="credit-card-ui" style="background: linear-gradient(135deg, ${c.color || '#003b6f'} 0%, #0f172a 100%);">
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge bg-light text-dark fw-bold px-2 py-1">${c.bank_name}</span>
+                        <span class="fw-bold fs-6 tracking-wide">${c.card_brand}</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="card-chip"></div>
+                        <span class="badge ${isCredit ? 'bg-warning-subtle text-warning' : 'bg-info-subtle text-info'} rounded-pill">
+                            ${isCredit ? 'CRÉDITO' : 'DÉBITO'}
+                        </span>
+                    </div>
+
+                    <div class="card-number-display mb-3">
+                        •••• •••• •••• ${c.last_four_digits}
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-end">
+                        <div>
+                            <span class="very-small text-white-50 d-block" style="font-size: 0.7rem;">TITULAR</span>
+                            <span class="fw-semibold small">${user.full_name || 'USUARIO'}</span>
+                        </div>
+                        ${isCredit && c.due_day ? `
+                        <div class="text-end">
+                            <span class="very-small text-white-50 d-block" style="font-size: 0.7rem;">PAGO DÍA</span>
+                            <span class="fw-semibold small">${c.due_day} de cada mes</span>
+                        </div>` : ''}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel de detalles financieros y acciones -->
+            <div class="card border-0 shadow-sm rounded-4 mt-2 p-3 bg-white">
+                ${isCredit ? `
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between align-items-center small mb-1">
+                        <span class="text-muted">Utilización: <strong>${utilRate}%</strong></span>
+                        <span class="text-muted">Deuda: <strong class="text-danger">$${parseFloat(c.current_balance).toFixed(2)}</strong> / $${parseFloat(c.credit_limit).toFixed(2)}</span>
+                    </div>
+                    <div class="progress" style="height: 7px;">
+                        <div class="progress-bar bg-${utilColor}" role="progressbar" style="width: ${Math.min(100, utilRate)}%"></div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between small text-muted pt-1 border-top">
+                    <span>Disponible: <strong class="text-success">$${parseFloat(c.available_credit).toFixed(2)}</strong></span>
+                    ${c.days_until_due !== null ? `
+                    <span class="${c.is_near_due ? 'badge bg-danger text-white' : 'badge bg-light text-dark border'}">
+                        <i class="bi bi-clock me-1"></i> ${c.days_until_due === 0 ? '¡Vence hoy!' : `Pago en ${c.days_until_due}d`}
+                    </span>` : ''}
+                </div>
+                ` : `
+                <div class="small text-muted py-1">
+                    <i class="bi bi-info-circle me-1"></i> Tarjeta de débito vinculada a cuenta corriente/ahorros.
+                </div>
+                `}
+
+                <div class="d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
+                    ${isCredit ? `
+                    <button class="btn btn-outline-primary btn-sm rounded-3 px-2" onclick="openAdjustCardModal(${c.id}, '${c.name}', ${c.current_balance})" title="Registrar Compra / Pago">
+                        <i class="bi bi-plus-slash-minus me-1"></i> Consumo / Pago
+                    </button>` : ''}
+                    <button class="btn btn-outline-danger btn-sm rounded-3 px-2" onclick="deleteCard(${c.id}, '${c.name}')" title="Eliminar Tarjeta">
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function handleCardBankChange(selectElem, colorInputId) {
+    const opt = selectElem.options[selectElem.selectedIndex];
+    const col = opt.getAttribute('data-color');
+    if (col) document.getElementById(colorInputId).value = col;
+}
+
+function toggleCreditFields(formPrefix) {
+    const type = document.getElementById('cardType').value;
+    const container = document.getElementById('creditFieldsContainer');
+    if (type === 'debit') {
+        container.classList.add('d-none');
+    } else {
+        container.classList.remove('d-none');
+    }
+}
+
+// Crear Tarjeta
+document.getElementById('createCardForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const alertBox = document.getElementById('createCardAlert');
+    const submitBtn = document.getElementById('createCardSubmitBtn');
+    const spinner = document.getElementById('createCardSpinner');
+
+    alertBox.className = 'alert d-none';
+    submitBtn.disabled = true;
+    spinner.classList.remove('d-none');
+
+    const cardType = document.getElementById('cardType').value;
+    const isCredit = cardType === 'credit';
+
+    const payload = {
+        name: document.getElementById('cardName').value.trim(),
+        bank_name: document.getElementById('cardBank').value,
+        card_type: cardType,
+        card_brand: document.getElementById('cardBrand').value,
+        last_four_digits: document.getElementById('cardLast4').value.trim(),
+        credit_limit: isCredit ? (parseFloat(document.getElementById('cardLimit').value) || 0) : 0,
+        current_balance: isCredit ? (parseFloat(document.getElementById('cardCurrentBalance').value) || 0) : 0,
+        cutoff_day: isCredit && document.getElementById('cardCutoffDay').value ? parseInt(document.getElementById('cardCutoffDay').value) : null,
+        due_day: isCredit && document.getElementById('cardDueDay').value ? parseInt(document.getElementById('cardDueDay').value) : null,
+        interest_rate: isCredit && document.getElementById('cardInterestRate').value ? parseFloat(document.getElementById('cardInterestRate').value) : 0,
+        currency: 'USD',
+        color: document.getElementById('cardColor').value,
+        bank_account_id: document.getElementById('cardLinkedAccount').value ? parseInt(document.getElementById('cardLinkedAccount').value) : null,
+        is_active: true
+    };
+
+    try {
+        const res = await authFetch('/api/v1/cards', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Error al registrar tarjeta');
+
+        bootstrap.Modal.getInstance(document.getElementById('createCardModal')).hide();
+        document.getElementById('createCardForm').reset();
+        loadCards();
+    } catch (err) {
+        alertBox.className = 'alert alert-danger d-block';
+        alertBox.textContent = err.message;
+    } finally {
+        submitBtn.disabled = false;
+        spinner.classList.add('d-none');
+    }
+});
+
+// Modal Ajustar Saldo / Registrar Consumo o Pago
+function openAdjustCardModal(cardId, name, currentBal) {
+    document.getElementById('adjustCardId').value = cardId;
+    document.getElementById('adjustCardInfo').textContent = `Tarjeta: "${name}" | Deuda actual: $${parseFloat(currentBal).toFixed(2)}`;
+    document.getElementById('adjustCardAmount').value = '';
+    document.getElementById('adjustCardReason').value = '';
+    new bootstrap.Modal(document.getElementById('adjustCardModal')).show();
+}
+
+function handleOperationTypeChange() {
+    const op = document.getElementById('adjustOperationType').value;
+    const label = document.getElementById('adjustAmountLabel');
+    if (op === 'delta_purchase') label.textContent = 'Monto del Consumo a Sumar (USD) *';
+    else if (op === 'delta_payment') label.textContent = 'Monto del Pago a Restar de la Deuda (USD) *';
+    else label.textContent = 'Nuevo Saldo Total Utilizado (USD) *';
+}
+
+document.getElementById('adjustCardForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const cardId = document.getElementById('adjustCardId').value;
+    const op = document.getElementById('adjustOperationType').value;
+    const amount = parseFloat(document.getElementById('adjustCardAmount').value) || 0;
+    const reason = document.getElementById('adjustCardReason').value.trim();
+    const alertBox = document.getElementById('adjustCardAlert');
+
+    let payload = { reason };
+    if (op === 'delta_purchase') {
+        payload.delta_amount = amount;
+    } else if (op === 'delta_payment') {
+        payload.delta_amount = -amount;
+    } else {
+        payload.new_balance = amount;
+    }
+
+    try {
+        const res = await authFetch(`/api/v1/cards/${cardId}/adjust-balance`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Error al actualizar deuda');
+
+        bootstrap.Modal.getInstance(document.getElementById('adjustCardModal')).hide();
+        loadCards();
+    } catch (err) {
+        alertBox.className = 'alert alert-danger d-block';
+        alertBox.textContent = err.message;
+    }
+});
+
+// Eliminar Tarjeta
+async function deleteCard(cardId, name) {
+    if (!confirm(`¿Estás seguro de que deseas eliminar la tarjeta "${name}"?`)) return;
+    try {
+        const res = await authFetch(`/api/v1/cards/${cardId}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.detail || 'Error al eliminar');
+        }
+        loadCards();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+// Filtros
+document.querySelectorAll('.filter-card-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-card-btn').forEach(b => {
+            b.classList.remove('active', 'btn-primary');
+            b.classList.add('btn-outline-secondary');
+        });
+        btn.classList.add('active', 'btn-primary');
+        btn.classList.remove('btn-outline-secondary');
+
+        const filter = btn.getAttribute('data-filter');
+        if (filter === 'all') {
+            renderCards(allCards);
+        } else {
+            renderCards(allCards.filter(c => c.card_type === filter));
+        }
+    });
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadBankAccountsForSelect();
+    loadCards();
+});
+</script>
+{% endblock %}

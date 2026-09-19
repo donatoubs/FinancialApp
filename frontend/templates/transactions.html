@@ -1,0 +1,796 @@
+{% extends "base.html" %}
+
+{% block title %}Movimientos Financieros - FinancialApp{% endblock %}
+
+{% block content %}
+<!-- Navbar Superior -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm py-3">
+    <div class="container">
+        <a class="navbar-brand fw-bold d-flex align-items-center" href="/">
+            <img src="/static/img/logo.png" alt="Logo" height="34" class="me-2 rounded-2">
+            FinancialApp
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
+                <li class="nav-item">
+                    <a class="nav-link" href="/"><i class="bi bi-house me-1"></i> Inicio</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/dashboard"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/accounts"><i class="bi bi-bank me-1"></i> Cuentas</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/cards"><i class="bi bi-credit-card me-1"></i> Tarjetas</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active fw-semibold" href="/transactions"><i class="bi bi-arrow-left-right me-1"></i> Movimientos</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/budgets"><i class="bi bi-pie-chart me-1"></i> Presupuestos</a>
+                </li>
+            </ul>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-light small">
+                    <i class="bi bi-person-circle text-primary me-1"></i>
+                    <strong id="navUserName">Usuario</strong> (<span id="navUserCurrency" class="badge bg-secondary">USD</span>)
+                </span>
+                <button id="logoutBtn" class="btn btn-outline-danger btn-sm px-3 rounded-3">
+                    <i class="bi bi-box-arrow-right me-1"></i> Salir
+                </button>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="container py-5">
+    <!-- Encabezado y Acciones -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-arrow-left-right text-primary me-2"></i>Movimientos Financieros</h2>
+            <p class="text-muted mb-0">Registra ingresos, gastos, transferencias y pagos con sincronización automática de saldos.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary px-3 py-2 rounded-3 fw-semibold" data-bs-toggle="modal" data-bs-target="#categoriesModal" onclick="loadCategoriesList()">
+                <i class="bi bi-tags me-1"></i> Categorías
+            </button>
+            <button class="btn btn-primary px-4 py-2 rounded-3 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#createTxModal" onclick="prepareCreateModal()">
+                <i class="bi bi-plus-circle me-1"></i> Nuevo Movimiento
+            </button>
+        </div>
+    </div>
+
+    <!-- Alertas globales -->
+    <div id="globalAlert" class="alert d-none" role="alert"></div>
+
+    <!-- Resumen KPI de Movimientos -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 bg-white p-3 h-100">
+                <div class="d-flex align-items-center">
+                    <div class="p-3 bg-success-subtle text-success rounded-4 me-3">
+                        <i class="bi bi-arrow-down-left-circle fs-3"></i>
+                    </div>
+                    <div>
+                        <span class="text-muted small fw-semibold">Ingresos Totales</span>
+                        <h4 class="fw-bold text-success mb-0" id="kpiTotalIncome">$0.00</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 bg-white p-3 h-100">
+                <div class="d-flex align-items-center">
+                    <div class="p-3 bg-danger-subtle text-danger rounded-4 me-3">
+                        <i class="bi bi-arrow-up-right-circle fs-3"></i>
+                    </div>
+                    <div>
+                        <span class="text-muted small fw-semibold">Gastos Totales</span>
+                        <h4 class="fw-bold text-danger mb-0" id="kpiTotalExpense">$0.00</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 bg-white p-3 h-100">
+                <div class="d-flex align-items-center">
+                    <div class="p-3 bg-primary-subtle text-primary rounded-4 me-3">
+                        <i class="bi bi-wallet2 fs-3"></i>
+                    </div>
+                    <div>
+                        <span class="text-muted small fw-semibold">Balance Neto del Periodo</span>
+                        <h4 class="fw-bold text-primary mb-0" id="kpiNetBalance">$0.00</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros de Búsqueda -->
+    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-4">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-3">
+                <select class="form-select form-select-sm" id="filterTxType" onchange="loadTransactions()">
+                    <option value="">Todos los tipos</option>
+                    <option value="income">Ingresos (+)</option>
+                    <option value="expense">Gastos (-)</option>
+                    <option value="transfer">Transferencias (↔)</option>
+                    <option value="card_payment">Pagos a Tarjeta (💳)</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select form-select-sm" id="filterCategory" onchange="loadTransactions()">
+                    <option value="">Todas las categorías</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="date" class="form-control form-control-sm" id="filterStartDate" onchange="loadTransactions()" title="Fecha Desde">
+            </div>
+            <div class="col-md-2">
+                <input type="date" class="form-control form-control-sm" id="filterEndDate" onchange="loadTransactions()" title="Fecha Hasta">
+            </div>
+            <div class="col-md-2 text-end">
+                <button class="btn btn-outline-secondary btn-sm w-100 rounded-3" onclick="clearFilters()">
+                    <i class="bi bi-x-circle me-1"></i> Limpiar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Transacciones -->
+    <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4 py-3">Tipo / Categoría</th>
+                        <th class="py-3">Descripción</th>
+                        <th class="py-3">Fecha</th>
+                        <th class="py-3">Cuenta / Tarjeta</th>
+                        <th class="py-3 text-end">Monto</th>
+                        <th class="pe-4 py-3 text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="transactionsTableBody">
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: REGISTRAR MOVIMIENTO -->
+<div class="modal fade" id="createTxModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle text-primary me-2"></i>Registrar Movimiento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="createTxForm">
+                <div class="modal-body pt-3">
+                    <div id="createTxAlert" class="alert d-none" role="alert"></div>
+
+                    <!-- Selector de Tipo de Movimiento -->
+                    <div class="btn-group w-100 mb-3" role="group">
+                        <input type="radio" class="btn-check" name="txTypeRadio" id="typeExpense" value="expense" checked onchange="updateModalFormLayout()">
+                        <label class="btn btn-outline-danger fw-semibold" for="typeExpense"><i class="bi bi-dash-circle me-1"></i> Gasto</label>
+
+                        <input type="radio" class="btn-check" name="txTypeRadio" id="typeIncome" value="income" onchange="updateModalFormLayout()">
+                        <label class="btn btn-outline-success fw-semibold" for="typeIncome"><i class="bi bi-plus-circle me-1"></i> Ingreso</label>
+
+                        <input type="radio" class="btn-check" name="txTypeRadio" id="typeTransfer" value="transfer" onchange="updateModalFormLayout()">
+                        <label class="btn btn-outline-primary fw-semibold" for="typeTransfer"><i class="bi bi-arrow-left-right me-1"></i> Transferencia</label>
+
+                        <input type="radio" class="btn-check" name="txTypeRadio" id="typeCardPay" value="card_payment" onchange="updateModalFormLayout()">
+                        <label class="btn btn-outline-warning fw-semibold text-dark" for="typeCardPay"><i class="bi bi-credit-card me-1"></i> Pago Tarjeta</label>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Monto (USD) *</label>
+                            <input type="number" step="0.01" min="0.01" inputmode="decimal" class="form-control form-control-lg fw-bold" id="txAmount" placeholder="0.00" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Fecha *</label>
+                            <input type="date" class="form-control form-control-lg" id="txDate" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Descripción *</label>
+                        <input type="text" class="form-control" id="txDescription" placeholder="Ej: Supermercado Supermaxi, Pago de sueldo, Almuerzo" required>
+                    </div>
+
+                    <!-- Campos dinámicos según el tipo -->
+                    <div id="dynamicFieldsContainer" class="p-3 bg-light rounded-3 mb-3 border">
+                        <!-- Se llena dinámicamente con JS -->
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Notas / Observaciones (Opcional)</label>
+                        <textarea class="form-control" id="txNotes" rows="2" placeholder="Factura #123, transferido desde app móvil, etc."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-3 px-4 fw-semibold" id="createTxSubmitBtn">
+                        <span id="createTxSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
+                        Guardar Movimiento
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: ADMINISTRAR CATEGORÍAS -->
+<div class="modal fade" id="categoriesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-tags text-primary me-2"></i>Categorías de Ingresos y Gastos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <div id="categoryModalAlert" class="alert d-none" role="alert"></div>
+
+                <!-- Formulario Agregar Categoría -->
+                <form id="createCategoryForm" class="p-3 bg-light rounded-3 border mb-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-plus-circle text-primary me-1"></i>Crear Nueva Categoría Personalizada</h6>
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label very-small fw-semibold">Nombre *</label>
+                            <input type="text" class="form-control form-control-sm" id="catName" placeholder="Ej: Mascotas, Gimnasio" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label very-small fw-semibold">Tipo *</label>
+                            <select class="form-select form-select-sm" id="catType" required>
+                                <option value="expense">Gasto</option>
+                                <option value="income">Ingreso</option>
+                                <option value="both">Ambos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label very-small fw-semibold">Icono Bootstrap</label>
+                            <select class="form-select form-select-sm" id="catIcon">
+                                <option value="bi-tag">Etiqueta (bi-tag)</option>
+                                <option value="bi-cart3">Carrito (bi-cart3)</option>
+                                <option value="bi-car-front">Auto (bi-car-front)</option>
+                                <option value="bi-house">Casa (bi-house)</option>
+                                <option value="bi-gift">Regalo (bi-gift)</option>
+                                <option value="bi-heart-pulse">Salud (bi-heart-pulse)</option>
+                                <option value="bi-cup-hot">Café / Comida (bi-cup-hot)</option>
+                                <option value="bi-controller">Juegos (bi-controller)</option>
+                                <option value="bi-briefcase">Trabajo (bi-briefcase)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label very-small fw-semibold">Color</label>
+                            <input type="color" class="form-control form-control-color form-control-sm w-100" id="catColor" value="#8b5cf6">
+                        </div>
+                        <div class="col-12 text-end mt-2">
+                            <button type="submit" class="btn btn-primary btn-sm rounded-3 px-3 fw-semibold">
+                                <i class="bi bi-check-lg me-1"></i> Guardar Categoría
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Listado de Categorías -->
+                <h6 class="fw-bold mb-2">Categorías Registradas</h6>
+                <div class="row g-2" id="categoriesGrid">
+                    <div class="col-12 text-center py-3 text-muted small">Cargando categorías...</div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let allTransactions = [];
+let allAccounts = [];
+let allCards = [];
+let allCategories = [];
+const token = localStorage.getItem('financial_token');
+const userJson = localStorage.getItem('financial_user');
+
+if (!token || !userJson) {
+    window.location.href = '/login';
+}
+
+const user = JSON.parse(userJson || '{}');
+document.getElementById('navUserName').textContent = user.full_name || 'Usuario';
+document.getElementById('navUserCurrency').textContent = user.currency_preference || 'USD';
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    localStorage.removeItem('financial_token');
+    localStorage.removeItem('financial_user');
+    window.location.href = '/login';
+});
+
+async function authFetch(url, options = {}) {
+    options.headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${token}`
+    };
+    const res = await fetch(url, options);
+    if (res.status === 401) {
+        localStorage.clear();
+        window.location.href = '/login';
+        throw new Error('Sesión expirada');
+    }
+    return res;
+}
+
+// Cargar Datos Base (Cuentas, Tarjetas, Categorías)
+async function loadBaseData() {
+    try {
+        const [accRes, cardRes, catRes] = await Promise.all([
+            authFetch('/api/v1/accounts?only_active=true'),
+            authFetch('/api/v1/cards?only_active=true'),
+            authFetch('/api/v1/categories')
+        ]);
+        if (accRes.ok) allAccounts = await accRes.json();
+        if (cardRes.ok) allCards = await cardRes.json();
+        if (catRes.ok) {
+            allCategories = await catRes.json();
+            populateCategoryFilter();
+        }
+    } catch (e) {
+        console.warn('Error cargando catálogos:', e);
+    }
+}
+
+function populateCategoryFilter() {
+    const sel = document.getElementById('filterCategory');
+    sel.innerHTML = '<option value="">Todas las categorías</option>';
+    allCategories.forEach(c => {
+        sel.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+    });
+}
+
+// Cargar Transacciones y Resumen
+async function loadTransactions() {
+    const txType = document.getElementById('filterTxType').value;
+    const catId = document.getElementById('filterCategory').value;
+    const sDate = document.getElementById('filterStartDate').value;
+    const eDate = document.getElementById('filterEndDate').value;
+
+    let url = '/api/v1/transactions?limit=100';
+    if (txType) url += `&transaction_type=${txType}`;
+    if (catId) url += `&category_id=${catId}`;
+    if (sDate) url += `&start_date=${sDate}`;
+    if (eDate) url += `&end_date=${eDate}`;
+
+    try {
+        const [listRes, summaryRes] = await Promise.all([
+            authFetch(url),
+            authFetch(`/api/v1/transactions/summary${sDate || eDate ? `?start_date=${sDate}&end_date=${eDate}` : ''}`)
+        ]);
+
+        if (listRes.ok) {
+            allTransactions = await listRes.json();
+            renderTransactionsTable(allTransactions);
+        }
+
+        if (summaryRes.ok) {
+            const sum = await summaryRes.json();
+            document.getElementById('kpiTotalIncome').textContent = `+$${parseFloat(sum.total_income).toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+            document.getElementById('kpiTotalExpense').textContent = `-$${parseFloat(sum.total_expense).toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+            
+            const net = parseFloat(sum.net_balance);
+            const netElem = document.getElementById('kpiNetBalance');
+            netElem.textContent = `${net >= 0 ? '+' : ''}$${net.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+            netElem.className = `fw-bold mb-0 ${net >= 0 ? 'text-primary' : 'text-danger'}`;
+        }
+    } catch (err) {
+        document.getElementById('transactionsTableBody').innerHTML = `
+            <tr><td colspan="6" class="text-center py-4 text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i> ${err.message}</td></tr>`;
+    }
+}
+
+function clearFilters() {
+    document.getElementById('filterTxType').value = '';
+    document.getElementById('filterCategory').value = '';
+    document.getElementById('filterStartDate').value = '';
+    document.getElementById('filterEndDate').value = '';
+    loadTransactions();
+}
+
+function renderTransactionsTable(transactions) {
+    const tbody = document.getElementById('transactionsTableBody');
+    if (!transactions || transactions.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-5">
+                    <i class="bi bi-inbox fs-2 text-muted mb-2 d-block"></i>
+                    <h6 class="fw-bold">No hay movimientos registrados</h6>
+                    <p class="text-muted small mb-0">Haz clic en "Nuevo Movimiento" para registrar tu primer ingreso o gasto.</p>
+                </td>
+            </tr>`;
+        return;
+    }
+
+    tbody.innerHTML = transactions.map(t => {
+        let badgeType = '';
+        let amountFormatted = '';
+        let accountDetail = '';
+
+        if (t.transaction_type === 'income') {
+            badgeType = `<span class="badge bg-success-subtle text-success rounded-pill"><i class="bi bi-arrow-down-left me-1"></i> Ingreso</span>`;
+            amountFormatted = `<span class="fw-bold text-success fs-6">+ $${parseFloat(t.amount).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>`;
+            accountDetail = `<span class="text-muted small"><i class="bi bi-bank me-1"></i> ${t.source_account_name || 'Cuenta'}</span>`;
+        } else if (t.transaction_type === 'expense') {
+            badgeType = `<span class="badge bg-danger-subtle text-danger rounded-pill"><i class="bi bi-arrow-up-right me-1"></i> Gasto</span>`;
+            amountFormatted = `<span class="fw-bold text-danger fs-6">- $${parseFloat(t.amount).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>`;
+            if (t.card_name) {
+                accountDetail = `<span class="text-muted small"><i class="bi bi-credit-card me-1"></i> ${t.card_name}</span>`;
+            } else {
+                accountDetail = `<span class="text-muted small"><i class="bi bi-bank me-1"></i> ${t.source_account_name || 'Efectivo / Cuenta'}</span>`;
+            }
+        } else if (t.transaction_type === 'transfer') {
+            badgeType = `<span class="badge bg-primary-subtle text-primary rounded-pill"><i class="bi bi-arrow-left-right me-1"></i> Transferencia</span>`;
+            amountFormatted = `<span class="fw-bold text-primary fs-6">↔ $${parseFloat(t.amount).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>`;
+            accountDetail = `<span class="text-muted small">${t.source_account_name || 'Origen'} <i class="bi bi-arrow-right text-primary"></i> ${t.destination_account_name || 'Destino'}</span>`;
+        } else if (t.transaction_type === 'card_payment') {
+            badgeType = `<span class="badge bg-warning-subtle text-dark rounded-pill"><i class="bi bi-credit-card me-1"></i> Pago Tarjeta</span>`;
+            amountFormatted = `<span class="fw-bold text-dark fs-6">💳 $${parseFloat(t.amount).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>`;
+            accountDetail = `<span class="text-muted small">${t.source_account_name || 'Cuenta'} <i class="bi bi-arrow-right text-warning"></i> ${t.card_name || 'Tarjeta'}</span>`;
+        }
+
+        const catIcon = t.category_icon || 'bi-tag';
+        const catColor = t.category_color || '#2563eb';
+        const catName = t.category_name || 'Sin Categoría';
+
+        return `
+        <tr>
+            <td class="ps-4">
+                <div class="d-flex align-items-center">
+                    <div class="p-2 rounded-3 me-2" style="background-color: ${catColor}15; color: ${catColor};">
+                        <i class="bi ${catIcon} fs-5"></i>
+                    </div>
+                    <div>
+                        <div class="fw-semibold text-dark">${catName}</div>
+                        ${badgeType}
+                    </div>
+                </div>
+            </td>
+            <td>
+                <div class="fw-semibold text-dark">${t.description}</div>
+                ${t.notes ? `<div class="text-muted very-small" style="font-size: 0.75rem;">${t.notes}</div>` : ''}
+            </td>
+            <td>
+                <span class="text-secondary small">${t.transaction_date}</span>
+            </td>
+            <td>
+                ${accountDetail}
+            </td>
+            <td class="text-end">
+                ${amountFormatted}
+            </td>
+            <td class="pe-4 text-end">
+                <button class="btn btn-outline-danger btn-sm rounded-3 px-2" onclick="deleteTransaction(${t.id}, '${t.description}')" title="Eliminar Movimiento">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+// Preparar Modal de Creación
+function prepareCreateModal() {
+    document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('typeExpense').checked = true;
+    updateModalFormLayout();
+}
+
+function updateModalFormLayout() {
+    const type = document.querySelector('input[name="txTypeRadio"]:checked').value;
+    const container = document.getElementById('dynamicFieldsContainer');
+
+    if (type === 'expense') {
+        const catOptions = allCategories.filter(c => c.category_type === 'expense' || c.category_type === 'both')
+            .map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        const accOptions = allAccounts.map(a => `<option value="${a.id}">${a.name} (${a.bank_name} - Saldo: $${parseFloat(a.current_balance).toFixed(2)})</option>`).join('');
+        const cardOptions = allCards.filter(c => c.card_type === 'credit')
+            .map(c => `<option value="${c.id}">${c.name} (${c.bank_name} - Disp: $${parseFloat(c.available_credit).toFixed(2)})</option>`).join('');
+
+        container.innerHTML = `
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold">Categoría de Gasto *</label>
+                    <select class="form-select" id="formCategoryId" required>
+                        <option value="" disabled selected>Selecciona categoría...</option>
+                        ${catOptions}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold">Método de Pago *</label>
+                    <select class="form-select" id="formPaymentMethod" onchange="toggleExpensePaymentSource()">
+                        <option value="debit_card">Cuenta Bancaria / Débito</option>
+                        <option value="credit_card">Tarjeta de Crédito</option>
+                        <option value="cash">Efectivo</option>
+                        <option value="bank_transfer">Transferencia Bancaria</option>
+                    </select>
+                </div>
+                <div class="col-12" id="sourceAccountField">
+                    <label class="form-label small fw-semibold">Cuenta de Origen / Pago *</label>
+                    <select class="form-select" id="formSourceAccountId" required>
+                        ${accOptions}
+                    </select>
+                </div>
+                <div class="col-12 d-none" id="sourceCardField">
+                    <label class="form-label small fw-semibold">Tarjeta de Crédito Utilizada *</label>
+                    <select class="form-select" id="formCardId">
+                        ${cardOptions.length > 0 ? cardOptions : '<option value="">No tienes tarjetas de crédito registradas</option>'}
+                    </select>
+                </div>
+            </div>`;
+    } else if (type === 'income') {
+        const catOptions = allCategories.filter(c => c.category_type === 'income' || c.category_type === 'both')
+            .map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        const accOptions = allAccounts.map(a => `<option value="${a.id}">${a.name} (${a.bank_name})</option>`).join('');
+
+        container.innerHTML = `
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold">Categoría de Ingreso *</label>
+                    <select class="form-select" id="formCategoryId" required>
+                        <option value="" disabled selected>Selecciona categoría...</option>
+                        ${catOptions}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold">Cuenta de Destino (Depósito) *</label>
+                    <select class="form-select" id="formSourceAccountId" required>
+                        ${accOptions}
+                    </select>
+                </div>
+            </div>`;
+    } else if (type === 'transfer') {
+        const accOptionsSrc = allAccounts.map(a => `<option value="${a.id}">${a.name} (${a.bank_name} - Saldo: $${parseFloat(a.current_balance).toFixed(2)})</option>`).join('');
+        const accOptionsDest = allAccounts.map(a => `<option value="${a.id}">${a.name} (${a.bank_name})</option>`).join('');
+
+        container.innerHTML = `
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold">Cuenta de Origen (Sale el dinero) *</label>
+                    <select class="form-select" id="formSourceAccountId" required>
+                        ${accOptionsSrc}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold">Cuenta de Destino (Recibe el dinero) *</label>
+                    <select class="form-select" id="formDestinationAccountId" required>
+                        ${accOptionsDest}
+                    </select>
+                </div>
+            </div>`;
+    } else if (type === 'card_payment') {
+        const accOptions = allAccounts.map(a => `<option value="${a.id}">${a.name} (${a.bank_name} - Saldo: $${parseFloat(a.current_balance).toFixed(2)})</option>`).join('');
+        const cardOptions = allCards.filter(c => c.card_type === 'credit')
+            .map(c => `<option value="${c.id}">${c.name} (${c.bank_name} - Deuda: $${parseFloat(c.current_balance).toFixed(2)})</option>`).join('');
+
+        container.innerHTML = `
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold">Pagar desde Cuenta *</label>
+                    <select class="form-select" id="formSourceAccountId" required>
+                        ${accOptions}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold">Tarjeta de Crédito a Abonar *</label>
+                    <select class="form-select" id="formCardId" required>
+                        ${cardOptions}
+                    </select>
+                </div>
+            </div>`;
+    }
+}
+
+function toggleExpensePaymentSource() {
+    const method = document.getElementById('formPaymentMethod').value;
+    const accField = document.getElementById('sourceAccountField');
+    const cardField = document.getElementById('sourceCardField');
+
+    if (method === 'credit_card') {
+        accField.classList.add('d-none');
+        cardField.classList.remove('d-none');
+        document.getElementById('formSourceAccountId').required = false;
+        document.getElementById('formCardId').required = true;
+    } else {
+        accField.classList.remove('d-none');
+        cardField.classList.add('d-none');
+        document.getElementById('formSourceAccountId').required = true;
+        document.getElementById('formCardId').required = false;
+    }
+}
+
+// Crear Movimiento
+document.getElementById('createTxForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const alertBox = document.getElementById('createTxAlert');
+    const submitBtn = document.getElementById('createTxSubmitBtn');
+    const spinner = document.getElementById('createTxSpinner');
+
+    alertBox.className = 'alert d-none';
+    submitBtn.disabled = true;
+    spinner.classList.remove('d-none');
+
+    const type = document.querySelector('input[name="txTypeRadio"]:checked').value;
+    const amount = parseFloat(document.getElementById('txAmount').value) || 0;
+    const txDate = document.getElementById('txDate').value;
+    const desc = document.getElementById('txDescription').value.trim();
+    const notes = document.getElementById('txNotes').value.trim() || null;
+
+    let payload = {
+        transaction_type: type,
+        amount: amount,
+        currency: 'USD',
+        description: desc,
+        notes: notes,
+        transaction_date: txDate,
+        payment_method: 'cash'
+    };
+
+    if (type === 'expense') {
+        payload.category_id = parseInt(document.getElementById('formCategoryId').value) || null;
+        payload.payment_method = document.getElementById('formPaymentMethod').value;
+        if (payload.payment_method === 'credit_card') {
+            payload.card_id = parseInt(document.getElementById('formCardId').value) || null;
+        } else {
+            payload.source_account_id = parseInt(document.getElementById('formSourceAccountId').value) || null;
+        }
+    } else if (type === 'income') {
+        payload.category_id = parseInt(document.getElementById('formCategoryId').value) || null;
+        payload.source_account_id = parseInt(document.getElementById('formSourceAccountId').value) || null;
+        payload.payment_method = 'bank_transfer';
+    } else if (type === 'transfer') {
+        payload.source_account_id = parseInt(document.getElementById('formSourceAccountId').value) || null;
+        payload.destination_account_id = parseInt(document.getElementById('formDestinationAccountId').value) || null;
+        payload.payment_method = 'bank_transfer';
+    } else if (type === 'card_payment') {
+        payload.source_account_id = parseInt(document.getElementById('formSourceAccountId').value) || null;
+        payload.card_id = parseInt(document.getElementById('formCardId').value) || null;
+        payload.payment_method = 'bank_transfer';
+    }
+
+    try {
+        const res = await authFetch('/api/v1/transactions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Error al registrar movimiento');
+
+        bootstrap.Modal.getInstance(document.getElementById('createTxModal')).hide();
+        document.getElementById('createTxForm').reset();
+        await loadBaseData();
+        loadTransactions();
+    } catch (err) {
+        alertBox.className = 'alert alert-danger d-block';
+        alertBox.textContent = err.message;
+    } finally {
+        submitBtn.disabled = false;
+        spinner.classList.add('d-none');
+    }
+});
+
+// Eliminar Movimiento
+async function deleteTransaction(txId, desc) {
+    if (!confirm(`¿Estás seguro de que deseas eliminar el movimiento "${desc}"? Los saldos de tus cuentas o tarjetas serán revertidos automáticamente.`)) return;
+    try {
+        const res = await authFetch(`/api/v1/transactions/${txId}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.detail || 'Error al eliminar');
+        }
+        await loadBaseData();
+        loadTransactions();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+// Cargar Categorías en Modal
+async function loadCategoriesList() {
+    try {
+        const res = await authFetch('/api/v1/categories');
+        if (res.ok) {
+            allCategories = await res.json();
+            const grid = document.getElementById('categoriesGrid');
+            grid.innerHTML = allCategories.map(c => `
+                <div class="col-md-6">
+                    <div class="p-2 border rounded-3 d-flex justify-content-between align-items-center bg-white">
+                        <div class="d-flex align-items-center">
+                            <span class="p-2 rounded-2 me-2" style="background-color: ${c.color}20; color: ${c.color};">
+                                <i class="bi ${c.icon}"></i>
+                            </span>
+                            <div>
+                                <span class="fw-semibold small d-block">${c.name}</span>
+                                <span class="badge ${c.category_type === 'income' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} very-small" style="font-size: 0.65rem;">
+                                    ${c.category_type === 'income' ? 'Ingreso' : 'Gasto'}
+                                </span>
+                            </div>
+                        </div>
+                        ${!c.is_default ? `
+                        <button class="btn btn-outline-danger btn-sm p-1 rounded-2" onclick="deleteCategory(${c.id})" title="Eliminar">
+                            <i class="bi bi-trash3"></i>
+                        </button>` : '<span class="badge bg-light text-secondary very-small border">Sistema</span>'}
+                    </div>
+                </div>`).join('');
+        }
+    } catch (e) {
+        console.warn(e);
+    }
+}
+
+// Crear Categoría
+document.getElementById('createCategoryForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const alertBox = document.getElementById('categoryModalAlert');
+    alertBox.className = 'alert d-none';
+
+    const payload = {
+        name: document.getElementById('catName').value.trim(),
+        category_type: document.getElementById('catType').value,
+        icon: document.getElementById('catIcon').value,
+        color: document.getElementById('catColor').value
+    };
+
+    try {
+        const res = await authFetch('/api/v1/categories', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.detail || 'Error al crear');
+        }
+        document.getElementById('createCategoryForm').reset();
+        await loadCategoriesList();
+        populateCategoryFilter();
+    } catch (err) {
+        alertBox.className = 'alert alert-danger d-block';
+        alertBox.textContent = err.message;
+    }
+});
+
+async function deleteCategory(catId) {
+    if (!confirm('¿Deseas eliminar esta categoría personalizada?')) return;
+    try {
+        const res = await authFetch(`/api/v1/categories/${catId}`, { method: 'DELETE' });
+        if (res.ok) {
+            await loadCategoriesList();
+            populateCategoryFilter();
+        }
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadBaseData();
+    loadTransactions();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar Sesión - FinancialApp{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-sm border-0 rounded-4 p-4">
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <img src="/static/img/logo.png" alt="Logo" height="58" class="mb-3 rounded-3 shadow-sm">
+                        <h3 class="fw-bold">Iniciar Sesión</h3>
+                        <p class="text-muted small">Ingresa tus credenciales para acceder a tus finanzas</p>
+                    </div>
+
+                    <div id="alertBox" class="alert d-none" role="alert"></div>
+
+                    <form id="loginForm">
+                        <div class="mb-3">
+                            <label for="email" class="form-label small fw-semibold">Correo Electrónico</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-envelope"></i></span>
+                                <input type="email" class="form-control" id="email" placeholder="nombre@correo.com" required autocomplete="email">
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="password" class="form-label small fw-semibold">Contraseña</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-key"></i></span>
+                                <input type="password" class="form-control" id="password" placeholder="••••••••" required autocomplete="current-password">
+                            </div>
+                        </div>
+
+                        <button type="submit" id="submitBtn" class="btn btn-primary w-100 py-2 fw-semibold rounded-3">
+                            <span id="btnSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
+                            Ingresar
+                        </button>
+                    </form>
+
+                    <div class="text-center mt-4">
+                        <p class="small text-muted mb-0">¿Aún no tienes una cuenta? <a href="/register" class="text-primary text-decoration-none fw-semibold">Regístrate gratis</a></p>
+                        <a href="/" class="small text-secondary text-decoration-none d-block mt-2"><i class="bi bi-arrow-left me-1"></i> Volver al inicio</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const alertBox = document.getElementById('alertBox');
+    const submitBtn = document.getElementById('submitBtn');
+    const btnSpinner = document.getElementById('btnSpinner');
+
+    alertBox.className = 'alert d-none';
+    submitBtn.disabled = true;
+    btnSpinner.classList.remove('d-none');
+
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    try {
+        const response = await fetch('/api/v1/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || 'Credenciales incorrectas');
+        }
+
+        // Guardar token JWT y datos de usuario en localStorage
+        localStorage.setItem('financial_token', data.token.access_token);
+        localStorage.setItem('financial_user', JSON.stringify(data.user));
+
+        alertBox.className = 'alert alert-success d-block';
+        alertBox.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> ¡Bienvenido, ' + data.user.full_name + '! Redirigiendo...';
+
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 1200);
+
+    } catch (err) {
+        alertBox.className = 'alert alert-danger d-block';
+        alertBox.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i> ' + err.message;
+    } finally {
+        submitBtn.disabled = false;
+        btnSpinner.classList.add('d-none');
+    }
+});
+</script>
+{% endblock %}

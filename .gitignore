@@ -1,0 +1,45 @@
+# Entornos virtuales
+venv/
+.venv/
+env/
+ENV/
+
+# Python cache y compilados
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Variables de entorno y secretos
+.env
+.env.local
+.env.*.local
+
+# Bases de datos SQLite locales (si se usan en pruebas)
+*.sqlite3
+*.db
+
+# Logs
+*.log
+logs/
+
+# IDEs y editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Pruebas y cobertura
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Distribución y empaquetado
+build/
+dist/
+*.egg-info/
+
+# Binarios locales
+cloudflared.exe
+*.exe

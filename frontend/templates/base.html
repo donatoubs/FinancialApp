@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>{% block title %}FinancialApp - Gestión Financiera Personal{% endblock %}</title>
+
+    <!-- PWA & Apple iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FinancialApp">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#2563eb">
+
+    <!-- Iconos de Aplicación para iOS y Android -->
+    <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png?v=2">
+    <link rel="icon" type="image/png" href="/static/img/logo.png?v=2">
+    <link rel="manifest" href="/static/manifest.json">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-light">
+    {% block content %}{% endblock %}
+
+    <!-- Barra de Navegación Inferior Estilo App Móvil (Visible solo en celulares / iPhone) -->
+    <nav class="mobile-bottom-nav d-md-none" id="mobileBottomNav">
+        <a href="/dashboard" class="mobile-nav-item" id="mobNavDashboard">
+            <i class="bi bi-speedometer2"></i>
+            <span>Dashboard</span>
+        </a>
+        <a href="/accounts" class="mobile-nav-item" id="mobNavAccounts">
+            <i class="bi bi-bank"></i>
+            <span>Cuentas</span>
+        </a>
+        <a href="/cards" class="mobile-nav-item" id="mobNavCards">
+            <i class="bi bi-credit-card"></i>
+            <span>Tarjetas</span>
+        </a>
+        <a href="/transactions" class="mobile-nav-item" id="mobNavTransactions">
+            <i class="bi bi-arrow-left-right"></i>
+            <span>Movimientos</span>
+        </a>
+        <a href="/budgets" class="mobile-nav-item" id="mobNavBudgets">
+            <i class="bi bi-pie-chart"></i>
+            <span>Presupuestos</span>
+        </a>
+    </nav>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    
+    <!-- Script Global de Navegación Móvil -->
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const path = window.location.pathname;
+        const navMap = {
+            '/dashboard': 'mobNavDashboard',
+            '/accounts': 'mobNavAccounts',
+            '/cards': 'mobNavCards',
+            '/transactions': 'mobNavTransactions',
+            '/budgets': 'mobNavBudgets'
+        };
+
+        const activeId = navMap[path];
+        if (activeId) {
+            const activeElem = document.getElementById(activeId);
+            if (activeElem) activeElem.classList.add('active');
+        }
+
+        // Si estamos en login o register, ocultar barra móvil
+        const bottomNav = document.getElementById('mobileBottomNav');
+        if (bottomNav && (path === '/login' || path === '/register')) {
+            bottomNav.classList.add('d-none');
+        }
+    });
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

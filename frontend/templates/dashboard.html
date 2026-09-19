@@ -1,0 +1,577 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Financiero - FinancialApp{% endblock %}
+
+{% block extra_head %}
+<style>
+.kpi-card {
+    border-radius: 16px;
+    border: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.06);
+}
+.chart-container {
+    position: relative;
+    height: 280px;
+    width: 100%;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Navbar Superior Estandarizada -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm py-3">
+    <div class="container">
+        <a class="navbar-brand fw-bold d-flex align-items-center" href="/">
+            <img src="/static/img/logo.png" alt="Logo" height="34" class="me-2 rounded-2">
+            FinancialApp
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
+                <li class="nav-item">
+                    <a class="nav-link" href="/"><i class="bi bi-house me-1"></i> Inicio</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active fw-semibold" href="/dashboard"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/accounts"><i class="bi bi-bank me-1"></i> Cuentas</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/cards"><i class="bi bi-credit-card me-1"></i> Tarjetas</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/transactions"><i class="bi bi-arrow-left-right me-1"></i> Movimientos</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/budgets"><i class="bi bi-pie-chart me-1"></i> Presupuestos</a>
+                </li>
+            </ul>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-light small">
+                    <i class="bi bi-person-circle text-primary me-1"></i>
+                    <strong id="navUserName">Usuario</strong> (<span id="navUserCurrency" class="badge bg-secondary">USD</span>)
+                </span>
+                <button id="logoutBtn" class="btn btn-outline-danger btn-sm px-3 rounded-3">
+                    <i class="bi bi-box-arrow-right me-1"></i> Salir
+                </button>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="container py-5">
+    <!-- Encabezado del Dashboard -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-speedometer2 text-primary me-2"></i>Dashboard Financiero</h2>
+            <p class="text-muted mb-0">Resumen consolidado de tu patrimonio, flujo de caja y salud crediticia en tiempo real.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/transactions" class="btn btn-primary px-3 py-2 rounded-3 fw-semibold shadow-sm">
+                <i class="bi bi-plus-circle me-1"></i> Nuevo Movimiento
+            </a>
+        </div>
+    </div>
+
+    <!-- Alertas globales -->
+    <div id="globalAlert" class="alert d-none" role="alert"></div>
+
+    <!-- FILA 1: KPIs Principales de Patrimonio y Liquidez -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card kpi-card shadow-sm bg-white p-4 h-100 border-start border-primary border-4">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small fw-semibold">PATRIMONIO NETO</span>
+                    <div class="p-2 bg-primary-subtle text-primary rounded-3"><i class="bi bi-safe fs-5"></i></div>
+                </div>
+                <h3 class="fw-bold text-dark mb-1" id="dashNetWorth">$0.00</h3>
+                <span class="text-secondary small">Dinero Disponible - Deuda de Tarjetas</span>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card kpi-card shadow-sm bg-white p-4 h-100 border-start border-success border-4">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small fw-semibold">DINERO DISPONIBLE</span>
+                    <div class="p-2 bg-success-subtle text-success rounded-3"><i class="bi bi-cash-stack fs-5"></i></div>
+                </div>
+                <h3 class="fw-bold text-success mb-1" id="dashAvailable">$0.00</h3>
+                <span class="text-secondary small" id="dashBankDetails">Cuentas bancarias y efectivo</span>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card kpi-card shadow-sm bg-white p-4 h-100 border-start border-danger border-4">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small fw-semibold">DEUDA DE TARJETAS</span>
+                    <div class="p-2 bg-danger-subtle text-danger rounded-3"><i class="bi bi-credit-card-2-back fs-5"></i></div>
+                </div>
+                <h3 class="fw-bold text-danger mb-1" id="dashCreditDebt">$0.00</h3>
+                <div class="d-flex justify-content-between align-items-center mt-1">
+                    <span class="text-secondary small" id="dashCreditAvailable">Disp: $0.00</span>
+                    <span class="badge bg-danger-subtle text-danger" id="dashUtilizationBadge">0% uso</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILA 2: Métricas del Mes Actual -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card kpi-card shadow-sm bg-white p-3 h-100">
+                <span class="text-muted very-small fw-bold text-uppercase" id="monthIncomeLabel">Ingresos del Mes</span>
+                <h4 class="fw-bold text-success mb-0 mt-1" id="dashMonthlyIncome">+$0.00</h4>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card kpi-card shadow-sm bg-white p-3 h-100">
+                <span class="text-muted very-small fw-bold text-uppercase" id="monthExpenseLabel">Gastos del Mes</span>
+                <h4 class="fw-bold text-danger mb-0 mt-1" id="dashMonthlyExpense">-$0.00</h4>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card kpi-card shadow-sm bg-white p-3 h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted very-small fw-bold text-uppercase" id="monthBalanceLabel">Balance del Mes</span>
+                    <span class="badge bg-primary-subtle text-primary" id="dashSavingsRate">0% Ahorro</span>
+                </div>
+                <h4 class="fw-bold text-primary mb-0 mt-1" id="dashMonthlyBalance">$0.00</h4>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILA 3: Gráficos Interactivos de Chart.js -->
+    <div class="row g-4 mb-4">
+        <!-- Gráfico 1: Gastos por Categoría -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-pie-chart text-primary me-2"></i>Gastos por Categoría</h5>
+                    <span class="text-muted very-small">Distribución</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico 2: Comparativa Mensual Ingresos vs Gastos -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-bar-chart-line text-primary me-2"></i>Ingresos vs Gastos</h5>
+                    <span class="text-muted very-small">Últimos 6 Meses</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="monthlyComparisonChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico 3: Distribución del Dinero en Cuentas -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-bank text-primary me-2"></i>Distribución de Cuentas</h5>
+                    <span class="text-muted very-small">Bancos de Ecuador</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="accountsDistributionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico 4: Utilización y Deudas de Tarjetas -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-credit-card text-primary me-2"></i>Deuda vs Límite de Tarjetas</h5>
+                    <span class="text-muted very-small">Estado de Crédito</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="cardsDebtChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILA 4: Próximos Pagos y Últimos Movimientos -->
+    <div class="row g-4">
+        <!-- Próximos Vencimientos de Tarjetas -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-calendar-event text-warning me-2"></i>Próximos Pagos</h5>
+                    <a href="/cards" class="text-primary small text-decoration-none fw-semibold">Ver Tarjetas</a>
+                </div>
+                <div id="upcomingCardsContainer">
+                    <div class="text-center py-4 text-muted small">Cargando próximos vencimientos...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Últimos Movimientos -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-clock-history text-primary me-2"></i>Últimos Movimientos</h5>
+                    <a href="/transactions" class="text-primary small text-decoration-none fw-semibold">Ver Historial Completo</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <tbody id="recentTransactionsTable">
+                            <tr><td class="text-center py-4 text-muted small">Cargando movimientos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let categoryChartInstance = null;
+let monthlyComparisonChartInstance = null;
+let accountsDistributionChartInstance = null;
+let cardsDebtChartInstance = null;
+
+const token = localStorage.getItem('financial_token');
+const userJson = localStorage.getItem('financial_user');
+
+if (!token || !userJson) {
+    window.location.href = '/login';
+}
+
+const user = JSON.parse(userJson || '{}');
+document.getElementById('navUserName').textContent = user.full_name || 'Usuario';
+document.getElementById('navUserCurrency').textContent = user.currency_preference || 'USD';
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    localStorage.removeItem('financial_token');
+    localStorage.removeItem('financial_user');
+    window.location.href = '/login';
+});
+
+async function authFetch(url, options = {}) {
+    options.headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${token}`
+    };
+    const res = await fetch(url, options);
+    if (res.status === 401) {
+        localStorage.clear();
+        window.location.href = '/login';
+        throw new Error('Sesión expirada');
+    }
+    return res;
+}
+
+// Cargar Dashboard
+async function loadDashboard() {
+    try {
+        const res = await authFetch('/api/v1/dashboard');
+        if (!res.ok) throw new Error('Error al cargar datos del dashboard');
+        const data = await res.json();
+
+        // 1. Renderizar KPIs Principales
+        const netWorth = parseFloat(data.net_worth);
+        const netWorthElem = document.getElementById('dashNetWorth');
+        netWorthElem.textContent = `$${netWorth.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        netWorthElem.className = `fw-bold mb-1 ${netWorth >= 0 ? 'text-dark' : 'text-danger'}`;
+
+        document.getElementById('dashAvailable').textContent = `$${parseFloat(data.available_money).toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+        document.getElementById('dashBankDetails').textContent = `Bancos: $${parseFloat(data.total_bank_accounts).toFixed(2)} | Efectivo: $${parseFloat(data.total_cash).toFixed(2)}`;
+
+        document.getElementById('dashCreditDebt').textContent = `$${parseFloat(data.total_credit_debt).toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+        document.getElementById('dashCreditAvailable').textContent = `Disp: $${parseFloat(data.total_credit_available).toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+        document.getElementById('dashUtilizationBadge').textContent = `${data.overall_card_utilization_rate}% uso`;
+
+        // 2. Renderizar Métricas del Mes
+        document.getElementById('monthIncomeLabel').textContent = `Ingresos (${data.current_month_name})`;
+        document.getElementById('monthExpenseLabel').textContent = `Gastos (${data.current_month_name})`;
+        document.getElementById('monthBalanceLabel').textContent = `Balance (${data.current_month_name})`;
+
+        document.getElementById('dashMonthlyIncome').textContent = `+$${parseFloat(data.monthly_income).toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+        document.getElementById('dashMonthlyExpense').textContent = `-$${parseFloat(data.monthly_expense).toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+
+        const mBalance = parseFloat(data.monthly_balance);
+        const mBalanceElem = document.getElementById('dashMonthlyBalance');
+        mBalanceElem.textContent = `${mBalance >= 0 ? '+' : ''}$${mBalance.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+        mBalanceElem.className = `fw-bold mb-0 mt-1 ${mBalance >= 0 ? 'text-primary' : 'text-danger'}`;
+        document.getElementById('dashSavingsRate').textContent = `${data.monthly_savings_rate}% Ahorro`;
+
+        // 3. Renderizar Gráficos Chart.js
+        renderCategoryChart(data.charts.expenses_by_category);
+        renderMonthlyComparisonChart(data.charts.monthly_incomes_vs_expenses);
+        renderAccountsChart(data.charts.accounts_distribution);
+        renderCardsDebtChart(data.charts.cards_debt_distribution);
+
+        // 4. Renderizar Próximos Pagos de Tarjetas
+        renderUpcomingCards(data.upcoming_card_payments);
+
+        // 5. Renderizar Últimos Movimientos
+        renderRecentTransactions(data.recent_transactions);
+
+    } catch (err) {
+        document.getElementById('globalAlert').className = 'alert alert-danger d-block';
+        document.getElementById('globalAlert').textContent = err.message;
+    }
+}
+
+// GRÁFICO 1: Gastos por Categoría (Doughnut)
+function renderCategoryChart(data) {
+    const ctx = document.getElementById('categoryChart').getContext('2d');
+    if (categoryChartInstance) categoryChartInstance.destroy();
+
+    if (!data.labels || data.labels.length === 0) {
+        categoryChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Sin gastos registrados'],
+                datasets: [{ data: [1], backgroundColor: ['#e2e8f0'] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+        return;
+    }
+
+    categoryChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                data: data.values,
+                backgroundColor: data.colors,
+                borderWidth: 2,
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return ` ${context.label}: $${context.raw.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+                        }
+                    }
+                }
+            },
+            cutout: '65%'
+        }
+    });
+}
+
+// GRÁFICO 2: Comparativa Mensual Ingresos vs Gastos (Bar)
+function renderMonthlyComparisonChart(data) {
+    const ctx = document.getElementById('monthlyComparisonChart').getContext('2d');
+    if (monthlyComparisonChartInstance) monthlyComparisonChartInstance.destroy();
+
+    monthlyComparisonChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.months,
+            datasets: [
+                {
+                    label: 'Ingresos',
+                    data: data.incomes,
+                    backgroundColor: '#10b981',
+                    borderRadius: 6
+                },
+                {
+                    label: 'Gastos',
+                    data: data.expenses,
+                    backgroundColor: '#ef4444',
+                    borderRadius: 6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return ` ${context.dataset.label}: $${context.raw.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+}
+
+// GRÁFICO 3: Distribución de Cuentas (Pie)
+function renderAccountsChart(data) {
+    const ctx = document.getElementById('accountsDistributionChart').getContext('2d');
+    if (accountsDistributionChartInstance) accountsDistributionChartInstance.destroy();
+
+    if (!data.labels || data.labels.length === 0) {
+        accountsDistributionChartInstance = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Sin fondos registrados'],
+                datasets: [{ data: [1], backgroundColor: ['#e2e8f0'] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+        return;
+    }
+
+    accountsDistributionChartInstance = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                data: data.values,
+                backgroundColor: data.colors,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return ` ${context.label}: $${context.raw.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// GRÁFICO 4: Deudas vs Límites de Tarjetas (Bar)
+function renderCardsDebtChart(data) {
+    const ctx = document.getElementById('cardsDebtChart').getContext('2d');
+    if (cardsDebtChartInstance) cardsDebtChartInstance.destroy();
+
+    if (!data.labels || data.labels.length === 0) {
+        cardsDebtChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: ['Sin tarjetas de crédito'], datasets: [{ data: [0] }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+        return;
+    }
+
+    cardsDebtChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.labels,
+            datasets: [
+                {
+                    label: 'Deuda Utilizada',
+                    data: data.debts,
+                    backgroundColor: '#ef4444',
+                    borderRadius: 6
+                },
+                {
+                    label: 'Límite Total',
+                    data: data.limits,
+                    backgroundColor: '#94a3b8',
+                    borderRadius: 6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+}
+
+// Renderizar Próximos Vencimientos
+function renderUpcomingCards(cards) {
+    const container = document.getElementById('upcomingCardsContainer');
+    if (!cards || cards.length === 0) {
+        container.innerHTML = '<div class="text-center py-4 text-muted small"><i class="bi bi-check2-circle text-success fs-4 d-block mb-1"></i>No tienes pagos pendientes de tarjetas.</div>';
+        return;
+    }
+
+    container.innerHTML = cards.map(c => `
+        <div class="p-3 border rounded-3 mb-2 bg-light d-flex justify-content-between align-items-center">
+            <div>
+                <span class="fw-semibold text-dark d-block">${c.name} (${c.bank_name})</span>
+                <span class="text-muted very-small">Deuda: <strong class="text-danger">$${parseFloat(c.current_balance).toFixed(2)}</strong> | Límite: $${parseFloat(c.credit_limit).toFixed(2)}</span>
+            </div>
+            <div>
+                <span class="badge ${c.is_near_due ? 'bg-danger text-white' : 'bg-primary-subtle text-primary'} rounded-pill">
+                    <i class="bi bi-clock me-1"></i> ${c.days_until_due === 0 ? '¡Vence hoy!' : `Pago en ${c.days_until_due}d`}
+                </span>
+            </div>
+        </div>`).join('');
+}
+
+// Renderizar Últimos Movimientos
+function renderRecentTransactions(transactions) {
+    const tbody = document.getElementById('recentTransactionsTable');
+    if (!transactions || transactions.length === 0) {
+        tbody.innerHTML = '<tr><td class="text-center py-4 text-muted small">No hay movimientos recientes.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = transactions.map(t => {
+        let amtClass = 'text-danger';
+        let prefix = '-';
+        if (t.transaction_type === 'income') {
+            amtClass = 'text-success';
+            prefix = '+';
+        } else if (t.transaction_type === 'transfer') {
+            amtClass = 'text-primary';
+            prefix = '↔';
+        } else if (t.transaction_type === 'card_payment') {
+            amtClass = 'text-dark';
+            prefix = '💳';
+        }
+
+        const icon = t.category_icon || 'bi-tag';
+        const color = t.category_color || '#2563eb';
+
+        return `
+        <tr>
+            <td style="width: 40px;">
+                <div class="p-2 rounded-3 text-center" style="background-color: ${color}20; color: ${color}; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;">
+                    <i class="bi ${icon}"></i>
+                </div>
+            </td>
+            <td>
+                <span class="fw-semibold text-dark small d-block">${t.description}</span>
+                <span class="text-muted very-small">${t.transaction_date} &bull; ${t.category_name || t.transaction_type}</span>
+            </td>
+            <td class="text-end fw-bold ${amtClass} small">
+                ${prefix} $${parseFloat(t.amount).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+document.addEventListener('DOMContentLoaded', loadDashboard);
+</script>
+{% endblock %}

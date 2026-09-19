@@ -1,0 +1,662 @@
+{% extends "base.html" %}
+
+{% block title %}Cuentas Bancarias - FinancialApp{% endblock %}
+
+{% block content %}
+<!-- Navbar Superior -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm py-3">
+    <div class="container">
+        <a class="navbar-brand fw-bold d-flex align-items-center" href="/">
+            <img src="/static/img/logo.png" alt="Logo" height="34" class="me-2 rounded-2">
+            FinancialApp
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
+                <li class="nav-item">
+                    <a class="nav-link" href="/"><i class="bi bi-house me-1"></i> Inicio</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/dashboard"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active fw-semibold" href="/accounts"><i class="bi bi-bank me-1"></i> Cuentas</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/cards"><i class="bi bi-credit-card me-1"></i> Tarjetas</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/transactions"><i class="bi bi-arrow-left-right me-1"></i> Movimientos</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/budgets"><i class="bi bi-pie-chart me-1"></i> Presupuestos</a>
+                </li>
+            </ul>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-light small">
+                    <i class="bi bi-person-circle text-primary me-1"></i>
+                    <strong id="navUserName">Usuario</strong> (<span id="navUserCurrency" class="badge bg-secondary">USD</span>)
+                </span>
+                <button id="logoutBtn" class="btn btn-outline-danger btn-sm px-3 rounded-3">
+                    <i class="bi bi-box-arrow-right me-1"></i> Salir
+                </button>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="container py-5">
+    <!-- Encabezado y Botón Crear -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-bank2 text-primary me-2"></i>Mis Cuentas y Efectivo</h2>
+            <p class="text-muted mb-0">Administra tus cuentas bancarias, cajas de ahorro y efectivo en un solo lugar.</p>
+        </div>
+        <div>
+            <button class="btn btn-primary px-4 py-2 rounded-3 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#createAccountModal">
+                <i class="bi bi-plus-circle me-1"></i> Nueva Cuenta
+            </button>
+        </div>
+    </div>
+
+    <!-- Alertas globales -->
+    <div id="globalAlert" class="alert d-none" role="alert"></div>
+
+    <!-- Tarjetas de Resumen Financiero -->
+    <div class="row g-3 mb-4" id="summaryRow">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 bg-white p-3">
+                <div class="d-flex align-items-center">
+                    <div class="p-3 bg-primary-subtle text-primary rounded-4 me-3">
+                        <i class="bi bi-collection fs-3"></i>
+                    </div>
+                    <div>
+                        <span class="text-muted small fw-semibold">Total de Cuentas</span>
+                        <h4 class="fw-bold mb-0" id="summaryTotalAccounts">0</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm rounded-4 bg-white p-3">
+                <div class="d-flex align-items-center">
+                    <div class="p-3 bg-success-subtle text-success rounded-4 me-3">
+                        <i class="bi bi-cash-stack fs-3"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <span class="text-muted small fw-semibold">Saldos Totales por Moneda</span>
+                        <div id="summaryBalancesContainer" class="d-flex flex-wrap gap-3 mt-1">
+                            <span class="text-muted small">Cargando...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros de búsqueda -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-primary active filter-btn" data-filter="all">Todas</button>
+            <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="checking">Corrientes</button>
+            <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="savings">Ahorros</button>
+            <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="cash">Efectivo</button>
+        </div>
+    </div>
+
+    <!-- Grid de Cuentas -->
+    <div class="row g-4" id="accountsGrid">
+        <div class="col-12 text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando cuentas...</span>
+            </div>
+            <p class="text-muted mt-2 small">Cargando tus cuentas...</p>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: CREAR CUENTA -->
+<div class="modal fade" id="createAccountModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle text-primary me-2"></i>Crear Nueva Cuenta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="createAccountForm">
+                <div class="modal-body pt-3">
+                    <div id="createModalAlert" class="alert d-none" role="alert"></div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Nombre de la Cuenta *</label>
+                        <input type="text" class="form-control" id="accName" placeholder="Ej: Cuenta de Nómina Principal" required>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Banco / Entidad *</label>
+                            <select class="form-select" id="accBank" required onchange="handleBankColorChange(this, 'accColor')">
+                                <option value="" disabled selected>Selecciona una entidad...</option>
+                                <option value="Banco Pichincha" data-color="#ffdd00">Banco Pichincha</option>
+                                <option value="Banco Guayaquil" data-color="#e30613">Banco Guayaquil</option>
+                                <option value="Banco del Pacífico" data-color="#005691">Banco del Pacífico</option>
+                                <option value="Produbanco" data-color="#00833e">Produbanco</option>
+                                <option value="Banco Bolivariano" data-color="#007236">Banco Bolivariano</option>
+                                <option value="Banco Internacional" data-color="#e05206">Banco Internacional</option>
+                                <option value="Banco del Austro" data-color="#7c1c2b">Banco del Austro</option>
+                                <option value="Banco Solidario" data-color="#ef7c00">Banco Solidario</option>
+                                <option value="Banco General Rumiñahui" data-color="#004080">Banco General Rumiñahui</option>
+                                <option value="Banco de Loja" data-color="#ffb600">Banco de Loja</option>
+                                <option value="Diners Club Ecuador" data-color="#003b6f">Diners Club Ecuador</option>
+                                <option value="Efectivo / Caja" data-color="#10b981">Efectivo / Billetera</option>
+                                <option value="Otro Banco / Cooperativa" data-color="#64748b">Otro Banco / Cooperativa</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Tipo de Cuenta *</label>
+                            <select class="form-select" id="accType" required>
+                                <option value="checking">Corriente</option>
+                                <option value="savings">Ahorros</option>
+                                <option value="cash">Efectivo</option>
+                                <option value="investment">Inversión</option>
+                                <option value="other">Otra</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Saldo Inicial *</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="accInitialBalance" placeholder="0.00" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Moneda *</label>
+                            <select class="form-select" id="accCurrency" required>
+                                <option value="USD" selected>USD ($)</option>
+                                <option value="EUR">EUR (€)</option>
+                                <option value="MXN">MXN ($)</option>
+                                <option value="COP">COP ($)</option>
+                                <option value="PEN">PEN (S/)</option>
+                                <option value="ARS">ARS ($)</option>
+                                <option value="CLP">CLP ($)</option>
+                                <option value="BRL">BRL (R$)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-8">
+                            <label class="form-label small fw-semibold">Número Oculto (Opcional)</label>
+                            <input type="text" class="form-control" id="accMask" placeholder="Ej: ****1234" maxlength="16">
+                            <div class="form-text small">Nunca ingreses contraseñas ni números completos.</div>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small fw-semibold">Color</label>
+                            <input type="color" class="form-control form-control-color w-100" id="accColor" value="#2563eb">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-3 px-4 fw-semibold" id="createAccSubmitBtn">
+                        <span id="createSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
+                        Guardar Cuenta
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: EDITAR CUENTA -->
+<div class="modal fade" id="editAccountModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square text-primary me-2"></i>Editar Cuenta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editAccountForm">
+                <input type="hidden" id="editAccId">
+                <div class="modal-body pt-3">
+                    <div id="editModalAlert" class="alert d-none" role="alert"></div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Nombre de la Cuenta</label>
+                        <input type="text" class="form-control" id="editAccName" required>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Banco / Entidad *</label>
+                            <select class="form-select" id="editAccBank" required onchange="handleBankColorChange(this, 'editAccColor')">
+                                <option value="Banco Pichincha" data-color="#ffdd00">Banco Pichincha</option>
+                                <option value="Banco Guayaquil" data-color="#e30613">Banco Guayaquil</option>
+                                <option value="Banco del Pacífico" data-color="#005691">Banco del Pacífico</option>
+                                <option value="Produbanco" data-color="#00833e">Produbanco</option>
+                                <option value="Banco Bolivariano" data-color="#007236">Banco Bolivariano</option>
+                                <option value="Banco Internacional" data-color="#e05206">Banco Internacional</option>
+                                <option value="Banco del Austro" data-color="#7c1c2b">Banco del Austro</option>
+                                <option value="Banco Solidario" data-color="#ef7c00">Banco Solidario</option>
+                                <option value="Banco General Rumiñahui" data-color="#004080">Banco General Rumiñahui</option>
+                                <option value="Banco de Loja" data-color="#ffb600">Banco de Loja</option>
+                                <option value="Diners Club Ecuador" data-color="#003b6f">Diners Club Ecuador</option>
+                                <option value="Efectivo / Caja" data-color="#10b981">Efectivo / Billetera</option>
+                                <option value="Otro Banco / Cooperativa" data-color="#64748b">Otro Banco / Cooperativa</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Tipo</label>
+                            <select class="form-select" id="editAccType" required>
+                                <option value="checking">Corriente</option>
+                                <option value="savings">Ahorros</option>
+                                <option value="cash">Efectivo</option>
+                                <option value="investment">Inversión</option>
+                                <option value="other">Otra</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Número Oculto</label>
+                            <input type="text" class="form-control" id="editAccMask">
+                        </div>
+                        <div class="col-3">
+                            <label class="form-label small fw-semibold">Moneda</label>
+                            <input type="text" class="form-control" id="editAccCurrency" maxlength="3" readonly>
+                        </div>
+                        <div class="col-3">
+                            <label class="form-label small fw-semibold">Color</label>
+                            <input type="color" class="form-control form-control-color w-100" id="editAccColor">
+                        </div>
+                    </div>
+
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="editAccActive" checked>
+                        <label class="form-check-label small" for="editAccActive">Cuenta Activa</label>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-3 px-4 fw-semibold" id="editAccSubmitBtn">
+                        <span id="editSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
+                        Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: AJUSTAR SALDO -->
+<div class="modal fade" id="adjustBalanceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-cash-coin text-warning me-2"></i>Ajustar Saldo de Cuenta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="adjustBalanceForm">
+                <input type="hidden" id="adjustAccId">
+                <div class="modal-body pt-3">
+                    <p class="small text-muted mb-3" id="adjustAccInfo">Ajustando saldo de la cuenta...</p>
+                    <div id="adjustModalAlert" class="alert d-none" role="alert"></div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Monto del Ajuste *</label>
+                        <input type="number" step="0.01" class="form-control" id="adjustDelta" placeholder="Ej: 50.00 o -25.50" required>
+                        <div class="form-text small">Usa valores positivos para sumar y negativos (-) para restar saldo.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Motivo del Ajuste</label>
+                        <input type="text" class="form-control" id="adjustReason" placeholder="Ej: Conciliación de intereses, ajuste manual">
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning rounded-3 px-4 fw-semibold" id="adjustSubmitBtn">Aplicar Ajuste</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let allAccounts = [];
+const token = localStorage.getItem('financial_token');
+const userJson = localStorage.getItem('financial_user');
+
+// Redirigir a login si no hay token
+if (!token || !userJson) {
+    window.location.href = '/login';
+}
+
+const user = JSON.parse(userJson || '{}');
+document.getElementById('navUserName').textContent = user.full_name || 'Usuario';
+document.getElementById('navUserCurrency').textContent = user.currency_preference || 'USD';
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    localStorage.removeItem('financial_token');
+    localStorage.removeItem('financial_user');
+    window.location.href = '/login';
+});
+
+// Helper de petición autenticada
+async function authFetch(url, options = {}) {
+    options.headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${token}`
+    };
+    const res = await fetch(url, options);
+    if (res.status === 401) {
+        localStorage.clear();
+        window.location.href = '/login';
+        throw new Error('Sesión expirada');
+    }
+    return res;
+}
+
+// Cargar Cuentas y Resumen
+async function loadAccounts() {
+    try {
+        const res = await authFetch('/api/v1/accounts/summary');
+        if (!res.ok) throw new Error('Error al cargar cuentas');
+        const summary = await res.json();
+        allAccounts = summary.accounts;
+
+        // Actualizar resumen
+        document.getElementById('summaryTotalAccounts').textContent = `${summary.total_active_accounts} / ${summary.total_accounts}`;
+        const balancesDiv = document.getElementById('summaryBalancesContainer');
+        balancesDiv.innerHTML = '';
+
+        const entries = Object.entries(summary.balances_by_currency);
+        if (entries.length === 0) {
+            balancesDiv.innerHTML = '<span class="text-muted small">Sin cuentas registradas</span>';
+        } else {
+            entries.forEach(([curr, amount]) => {
+                const badge = document.createElement('div');
+                badge.className = 'badge bg-light text-dark border px-3 py-2 fs-6 rounded-3';
+                badge.innerHTML = `<span class="fw-semibold text-primary">${curr}</span> <strong class="fs-5">${parseFloat(amount).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>`;
+                balancesDiv.appendChild(badge);
+            });
+        }
+
+        renderAccounts(allAccounts);
+    } catch (err) {
+        document.getElementById('accountsGrid').innerHTML = `
+            <div class="col-12 text-center py-4">
+                <div class="alert alert-danger d-inline-block px-4">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> ${err.message}
+                </div>
+            </div>`;
+    }
+}
+
+// Mapeo visual de tipos de cuenta
+const typeLabels = {
+    checking: { label: 'Corriente', icon: 'bi-credit-card-2-front', color: 'primary' },
+    savings: { label: 'Ahorros', icon: 'bi-piggy-bank', color: 'success' },
+    cash: { label: 'Efectivo', icon: 'bi-cash', color: 'warning' },
+    investment: { label: 'Inversión', icon: 'bi-graph-up-arrow', color: 'info' },
+    other: { label: 'Otra', icon: 'bi-wallet', color: 'secondary' }
+};
+
+function renderAccounts(accounts) {
+    const grid = document.getElementById('accountsGrid');
+    if (!accounts || accounts.length === 0) {
+        grid.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <div class="p-5 bg-white rounded-4 shadow-sm border">
+                    <i class="bi bi-bank fs-1 text-muted mb-3 d-block"></i>
+                    <h5 class="fw-bold">No tienes cuentas registradas</h5>
+                    <p class="text-muted small">Haz clic en "Nueva Cuenta" para registrar tu primera cuenta bancaria o saldo en efectivo.</p>
+                    <button class="btn btn-primary rounded-3 px-4" data-bs-toggle="modal" data-bs-target="#createAccountModal">
+                        <i class="bi bi-plus-circle me-1"></i> Crear mi primera cuenta
+                    </button>
+                </div>
+            </div>`;
+        return;
+    }
+
+    grid.innerHTML = accounts.map(acc => {
+        const typeInfo = typeLabels[acc.account_type] || typeLabels.other;
+        const formattedCurrent = parseFloat(acc.current_balance).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const formattedInitial = parseFloat(acc.initial_balance).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        return `
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden position-relative bg-white">
+                <div style="height: 6px; background-color: ${acc.color || '#2563eb'};"></div>
+                <div class="card-body p-4 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <span class="badge bg-${typeInfo.color}-subtle text-${typeInfo.color} rounded-pill mb-1">
+                                    <i class="bi ${typeInfo.icon} me-1"></i> ${typeInfo.label}
+                                </span>
+                                <h5 class="fw-bold text-dark mb-0">${acc.name}</h5>
+                                <span class="text-muted small">${acc.bank_name}</span>
+                            </div>
+                            <span class="badge ${acc.is_active ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'} rounded-pill">
+                                ${acc.is_active ? 'Activa' : 'Inactiva'}
+                            </span>
+                        </div>
+
+                        ${acc.account_number_mask ? `<div class="font-monospace text-secondary small mb-3"><i class="bi bi-hash"></i> ${acc.account_number_mask}</div>` : '<div class="mb-3"></div>'}
+
+                        <div class="bg-light p-3 rounded-3 mb-3">
+                            <span class="text-muted small d-block">Saldo Actual</span>
+                            <div class="d-flex align-items-baseline gap-1">
+                                <span class="fw-bold text-primary fs-6">${acc.currency}</span>
+                                <h3 class="fw-bold text-dark mb-0">${formattedCurrent}</h3>
+                            </div>
+                            <span class="text-muted very-small d-block mt-1" style="font-size: 0.75rem;">Saldo inicial: ${acc.currency} ${formattedInitial}</span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+                        <button class="btn btn-outline-warning btn-sm rounded-3 px-2" onclick="openAdjustModal(${acc.id}, '${acc.name}', ${acc.current_balance}, '${acc.currency}')" title="Ajustar Saldo">
+                            <i class="bi bi-cash-coin"></i>
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm rounded-3 px-2" onclick="openEditModal(${acc.id})" title="Editar Cuenta">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm rounded-3 px-2" onclick="deleteAccount(${acc.id}, '${acc.name}')" title="Eliminar Cuenta">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// Crear Cuenta
+document.getElementById('createAccountForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const modalAlert = document.getElementById('createModalAlert');
+    const submitBtn = document.getElementById('createAccSubmitBtn');
+    const spinner = document.getElementById('createSpinner');
+
+    modalAlert.className = 'alert d-none';
+    submitBtn.disabled = true;
+    spinner.classList.remove('d-none');
+
+    const payload = {
+        name: document.getElementById('accName').value.trim(),
+        bank_name: document.getElementById('accBank').value.trim(),
+        account_type: document.getElementById('accType').value,
+        initial_balance: parseFloat(document.getElementById('accInitialBalance').value) || 0,
+        currency: document.getElementById('accCurrency').value,
+        account_number_mask: document.getElementById('accMask').value.trim() || null,
+        color: document.getElementById('accColor').value,
+        is_active: true
+    };
+
+    try {
+        const res = await authFetch('/api/v1/accounts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Error al crear cuenta');
+
+        bootstrap.Modal.getInstance(document.getElementById('createAccountModal')).hide();
+        document.getElementById('createAccountForm').reset();
+        loadAccounts();
+    } catch (err) {
+        modalAlert.className = 'alert alert-danger d-block';
+        modalAlert.textContent = err.message;
+    } finally {
+        submitBtn.disabled = false;
+        spinner.classList.add('d-none');
+    }
+});
+
+// Abrir Modal de Edición
+function openEditModal(accId) {
+    const acc = allAccounts.find(a => a.id === accId);
+    if (!acc) return;
+
+    document.getElementById('editAccId').value = acc.id;
+    document.getElementById('editAccName').value = acc.name;
+    document.getElementById('editAccBank').value = acc.bank_name;
+    document.getElementById('editAccType').value = acc.account_type;
+    document.getElementById('editAccMask').value = acc.account_number_mask || '';
+    document.getElementById('editAccCurrency').value = acc.currency;
+    document.getElementById('editAccColor').value = acc.color || '#2563eb';
+    document.getElementById('editAccActive').checked = acc.is_active;
+
+    new bootstrap.Modal(document.getElementById('editAccountModal')).show();
+}
+
+// Guardar Edición de Cuenta
+document.getElementById('editAccountForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const accId = document.getElementById('editAccId').value;
+    const modalAlert = document.getElementById('editModalAlert');
+    const submitBtn = document.getElementById('editAccSubmitBtn');
+    const spinner = document.getElementById('editSpinner');
+
+    modalAlert.className = 'alert d-none';
+    submitBtn.disabled = true;
+    spinner.classList.remove('d-none');
+
+    const payload = {
+        name: document.getElementById('editAccName').value.trim(),
+        bank_name: document.getElementById('editAccBank').value.trim(),
+        account_type: document.getElementById('editAccType').value,
+        account_number_mask: document.getElementById('editAccMask').value.trim() || null,
+        color: document.getElementById('editAccColor').value,
+        is_active: document.getElementById('editAccActive').checked
+    };
+
+    try {
+        const res = await authFetch(`/api/v1/accounts/${accId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Error al actualizar cuenta');
+
+        bootstrap.Modal.getInstance(document.getElementById('editAccountModal')).hide();
+        loadAccounts();
+    } catch (err) {
+        modalAlert.className = 'alert alert-danger d-block';
+        modalAlert.textContent = err.message;
+    } finally {
+        submitBtn.disabled = false;
+        spinner.classList.add('d-none');
+    }
+});
+
+// Abrir Modal de Ajuste de Saldo
+function openAdjustModal(accId, name, balance, currency) {
+    document.getElementById('adjustAccId').value = accId;
+    document.getElementById('adjustAccInfo').textContent = `Ajustando saldo de "${name}". Saldo actual: ${currency} ${parseFloat(balance).toFixed(2)}`;
+    document.getElementById('adjustDelta').value = '';
+    document.getElementById('adjustReason').value = '';
+    new bootstrap.Modal(document.getElementById('adjustBalanceModal')).show();
+}
+
+// Guardar Ajuste de Saldo
+document.getElementById('adjustBalanceForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const accId = document.getElementById('adjustAccId').value;
+    const delta = parseFloat(document.getElementById('adjustDelta').value);
+    const reason = document.getElementById('adjustReason').value.trim();
+    const modalAlert = document.getElementById('adjustModalAlert');
+
+    try {
+        const res = await authFetch(`/api/v1/accounts/${accId}/adjust-balance`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ delta_amount: delta, reason })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Error al ajustar saldo');
+
+        bootstrap.Modal.getInstance(document.getElementById('adjustBalanceModal')).hide();
+        loadAccounts();
+    } catch (err) {
+        modalAlert.className = 'alert alert-danger d-block';
+        modalAlert.textContent = err.message;
+    }
+});
+
+// Eliminar Cuenta
+async function deleteAccount(accId, name) {
+    if (!confirm(`¿Estás seguro de que deseas eliminar la cuenta "${name}"? Esta acción no se puede deshacer.`)) {
+        return;
+    }
+    try {
+        const res = await authFetch(`/api/v1/accounts/${accId}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.detail || 'Error al eliminar cuenta');
+        }
+        loadAccounts();
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+// Filtros
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => {
+            b.classList.remove('active', 'btn-primary');
+            b.classList.add('btn-outline-secondary');
+        });
+        btn.classList.add('active', 'btn-primary');
+        btn.classList.remove('btn-outline-secondary');
+
+        const filter = btn.getAttribute('data-filter');
+        if (filter === 'all') {
+            renderAccounts(allAccounts);
+        } else {
+            renderAccounts(allAccounts.filter(a => a.account_type === filter));
+        }
+    });
+});
+
+function handleBankColorChange(selectElem, colorInputId) {
+    const selectedOption = selectElem.options[selectElem.selectedIndex];
+    const color = selectedOption.getAttribute('data-color');
+    if (color) {
+        document.getElementById(colorInputId).value = color;
+    }
+}
+
+// Carga inicial
+document.addEventListener('DOMContentLoaded', loadAccounts);
+</script>
+{% endblock %}

@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # Base de datos PostgreSQL
+  postgres_db:
+    image: postgres:16-alpine
+    container_name: financial_postgres_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-financial_db}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-financial_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Aplicación Web FastAPI + Uvicorn
+  web_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: financial_web_prod
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=FinancialApp
+      - APP_ENV=production
+      - DEBUG=False
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres_db:5432/${POSTGRES_DB:-financial_db}
+      - SECRET_KEY=${SECRET_KEY:-financial_super_secret_production_key_change_me_9876543210}
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
+      - CORS_ORIGINS=["*"]
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+    driver: local

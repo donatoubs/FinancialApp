@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Crear Cuenta - FinancialApp{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-6">
+            <div class="card shadow-sm border-0 rounded-4 p-4">
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <img src="/static/img/logo.png" alt="Logo" height="58" class="mb-3 rounded-3 shadow-sm">
+                        <h3 class="fw-bold">Crear Cuenta</h3>
+                        <p class="text-muted small">Únete a FinancialApp y toma el control de tus finanzas personales</p>
+                    </div>
+
+                    <div id="alertBox" class="alert d-none" role="alert"></div>
+
+                    <form id="registerForm">
+                        <div class="mb-3">
+                            <label for="fullName" class="form-label small fw-semibold">Nombre Completo</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+                                <input type="text" class="form-control" id="fullName" placeholder="Juan Pérez" required minlength="2" maxlength="100">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label small fw-semibold">Correo Electrónico</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-envelope"></i></span>
+                                <input type="email" class="form-control" id="email" placeholder="nombre@correo.com" required autocomplete="email">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="currency" class="form-label small fw-semibold">Moneda Principal</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-currency-exchange"></i></span>
+                                <select class="form-select" id="currency" required>
+                                    <option value="USD" selected>USD - Dólar Estadounidense ($)</option>
+                                    <option value="EUR">EUR - Euro (€)</option>
+                                    <option value="MXN">MXN - Peso Mexicano ($)</option>
+                                    <option value="COP">COP - Peso Colombiano ($)</option>
+                                    <option value="PEN">PEN - Sol Peruano (S/)</option>
+                                    <option value="ARS">ARS - Peso Argentino ($)</option>
+                                    <option value="CLP">CLP - Peso Chileno ($)</option>
+                                    <option value="BRL">BRL - Real Brasileño (R$)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-4">
+                            <div class="col-sm-6">
+                                <label for="password" class="form-label small fw-semibold">Contraseña</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-key"></i></span>
+                                    <input type="password" class="form-control" id="password" placeholder="Mínimo 8 car." required minlength="8">
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="confirmPassword" class="form-label small fw-semibold">Confirmar Contraseña</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-check2-circle"></i></span>
+                                    <input type="password" class="form-control" id="confirmPassword" placeholder="Repite la clave" required minlength="8">
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="submitBtn" class="btn btn-primary w-100 py-2 fw-semibold rounded-3">
+                            <span id="btnSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
+                            Registrarme
+                        </button>
+                    </form>
+
+                    <div class="text-center mt-4">
+                        <p class="small text-muted mb-0">¿Ya tienes una cuenta? <a href="/login" class="text-primary text-decoration-none fw-semibold">Inicia sesión</a></p>
+                        <a href="/" class="small text-secondary text-decoration-none d-block mt-2"><i class="bi bi-arrow-left me-1"></i> Volver al inicio</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const alertBox = document.getElementById('alertBox');
+    const submitBtn = document.getElementById('submitBtn');
+    const btnSpinner = document.getElementById('btnSpinner');
+
+    const fullName = document.getElementById('fullName').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const currency = document.getElementById('currency').value;
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    if (password !== confirmPassword) {
+        alertBox.className = 'alert alert-danger d-block';
+        alertBox.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i> Las contraseñas no coinciden.';
+        return;
+    }
+
+    alertBox.className = 'alert d-none';
+    submitBtn.disabled = true;
+    btnSpinner.classList.remove('d-none');
+
+    try {
+        const response = await fetch('/api/v1/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                full_name: fullName,
+                email: email,
+                currency_preference: currency,
+                password: password
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || 'No se pudo completar el registro');
+        }
+
+        // Guardar token y usuario
+        localStorage.setItem('financial_token', data.token.access_token);
+        localStorage.setItem('financial_user', JSON.stringify(data.user));
+
+        alertBox.className = 'alert alert-success d-block';
+        alertBox.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> ¡Registro exitoso! Iniciando tu sesión...';
+
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 1200);
+
+    } catch (err) {
+        alertBox.className = 'alert alert-danger d-block';
+        alertBox.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i> ' + err.message;
+    } finally {
+        submitBtn.disabled = false;
+        btnSpinner.classList.add('d-none');
+    }
+});
+</script>
+{% endblock %}
