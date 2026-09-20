@@ -94,40 +94,49 @@ def _parse_text_notification(raw_text: str) -> Tuple[Decimal, str, TransactionTy
     ])
     tx_type = TransactionType.INCOME if is_income else TransactionType.EXPENSE
 
-    # 2. Extraer monto usando Regex ($12.50, 12,50, etc.)
-    # Busca patrones tipo $12.34 o 12.34 USD o simplemente $12
+    # 2. Formato exacto DeUna: "Pagaste a X, por $Y el Z" o "Recibiste de X, por $Y el Z"
+    deuna_pay_match = re.search(r'Pagaste a\s+(.*?)(?:,\s*|\s+)por\s+\$?([0-9]+(?:[.,][0-9]{1,2})?)', text, re.IGNORECASE)
+    deuna_rec_match = re.search(r'Recibiste (?:de\s+)?(.*?)(?:,\s*|\s+)por\s+\$?([0-9]+(?:[.,][0-9]{1,2})?)', text, re.IGNORECASE)
+
+    if deuna_pay_match:
+        merchant = deuna_pay_match.group(1).strip()
+        amount_str = deuna_pay_match.group(2).replace(',', '.')
+        return Decimal(amount_str), merchant, TransactionType.EXPENSE
+
+    if deuna_rec_match:
+        merchant = deuna_rec_match.group(1).strip()
+        amount_str = deuna_rec_match.group(2).replace(',', '.')
+        return Decimal(amount_str), f"De: {merchant}", TransactionType.INCOME
+
+    # 3. Fallback genérico para monto usando Regex ($12.50, 12,50, etc.)
     amount_match = re.search(r'(?:\$|\bUSD\b)\s*([0-9]+(?:[.,][0-9]{1,2})?)', text, re.IGNORECASE)
     if not amount_match:
-        # Intento secundario: buscar número decimal aislado
         amount_match = re.search(r'\b([0-9]+(?:[.,][0-9]{2}))\b', text)
 
     if amount_match:
         amount_str = amount_match.group(1).replace(',', '.')
         amount = Decimal(amount_str)
     else:
-        amount = Decimal("1.00")  # Valor por defecto si no se detectó monto numérico
+        amount = Decimal("1.00")
 
-    # 3. Extraer comercio o destinatario
-    # Ej: "DeUna: Pagaste $5.00 a Cafeteria Don Juan" -> "Cafeteria Don Juan"
+    # 4. Extraer comercio o destinatario genérico
     merchant = "Transacción DeUna"
     if " a " in text:
         parts = text.split(" a ", 1)
         if len(parts) > 1:
-            merchant = parts[1].strip()
+            merchant = parts[1].split(",")[0].strip()
     elif " de " in text and is_income:
         parts = text.split(" de ", 1)
         if len(parts) > 1:
-            merchant = f"De: {parts[1].strip()}"
+            merchant = f"De: {parts[1].split(',')[0].strip()}"
     elif " en " in text:
         parts = text.split(" en ", 1)
         if len(parts) > 1:
-            merchant = parts[1].strip()
+            merchant = parts[1].split(",")[0].strip()
     else:
         merchant = text[:40]
 
-    # Limpiar caracteres sobrantes
     merchant = re.sub(r'[\.\,\!\?]+$', '', merchant).strip()
-
     return amount, merchant, tx_type
 
 
@@ -183,7 +192,12 @@ def process_ios_webhook(db: Session, user: User, payload: IOSWebhookPayload) -> 
         if payload.amount is None or payload.amount <= 0:
             raise HTTPException(status_code=400, detail="El monto debe ser un valor positivo.")
         amount = Decimal(str(payload.amount))
-        merchant = payload.merchant or "Compra Apple Pay"
+        raw_merchant = (payload.merchant or "").strip()
+        # Si el comercio recibido es solo un número (error común de variables en iOS Shortcuts), usar descripción por defecto
+        if not raw_merchant or raw_merchant.replace('.', '').replace(',', '').isdigit():
+            merchant = "Consumo DeUna" if (payload.source or "").lower() == "deuna" else "Consumo Apple Pay"
+        else:
+            merchant = raw_merchant
         tx_type = TransactionType.INCOME if (payload.transaction_type or "").upper() == "INCOME" else TransactionType.EXPENSE
 
     # 2. Identificar la tarjeta o cuenta bancaria
@@ -195,12 +209,18 @@ def process_ios_webhook(db: Session, user: User, payload: IOSWebhookPayload) -> 
     payment_method: PaymentMethod = PaymentMethod.CREDIT_CARD
     matched_label: str = "Billetera"
 
-    # Verificar si el origen es DeUna
-    is_deuna = (payload.source or "").lower() == "deuna" or "deuna" in (payload.raw_text or "").lower()
+    # Verificar si el origen es DeUna (por source, texto o notas)
+    source_str = (payload.source or "").lower().strip()
+    is_deuna = (
+        source_str == "deuna" or 
+        "deuna" in (payload.raw_text or "").lower() or 
+        "deuna" in (payload.notes or "").lower() or
+        "deuna" in merchant.lower()
+    )
 
     if is_deuna:
-        # Buscar cuenta de Banco Pichincha o Efectivo para DeUna
-        pichincha_acc = next((acc for acc in user_accounts if "pichincha" in acc.bank_name.lower() or "deuna" in acc.name.lower()), None)
+        # Buscar cuenta de Banco Pichincha o DeUna
+        pichincha_acc = next((acc for acc in user_accounts if "pichincha" in acc.bank_name.lower() or "pichincha" in acc.name.lower() or "deuna" in acc.name.lower()), None)
         if pichincha_acc:
             source_account_id = pichincha_acc.id
             payment_method = PaymentMethod.DEBIT_CARD
@@ -209,6 +229,11 @@ def process_ios_webhook(db: Session, user: User, payload: IOSWebhookPayload) -> 
             source_account_id = user_accounts[0].id
             payment_method = PaymentMethod.DEBIT_CARD
             matched_label = f"DeUna ({user_accounts[0].name})"
+        elif user_cards:
+            # Si el usuario no ha creado ninguna cuenta bancaria aún, usar su tarjeta
+            card_id = user_cards[0].id
+            payment_method = PaymentMethod.CREDIT_CARD
+            matched_label = f"DeUna ({user_cards[0].name})"
     elif payload.card and user_cards:
         # Buscar coincidencia con tarjetas registradas
         card_search = payload.card.lower()
@@ -248,8 +273,17 @@ def process_ios_webhook(db: Session, user: User, payload: IOSWebhookPayload) -> 
             detail="Debes tener al menos una cuenta bancaria o tarjeta registrada en la app para vincular el pago."
         )
 
-    # 3. Categorización automática inteligente
-    category = _match_category(db, user.id, merchant, tx_type)
+    # 3. Categorización: si el atajo envió una categoría explícita, priorizarla
+    category = None
+    if payload.category:
+        cat_search = payload.category.lower().strip()
+        user_categories = db.query(Category).filter(
+            (Category.user_id == user.id) | (Category.user_id.is_(None))
+        ).all()
+        category = next((c for c in user_categories if c.name.lower() in cat_search or cat_search in c.name.lower()), None)
+
+    if not category:
+        category = _match_category(db, user.id, merchant, tx_type)
 
     # 4. Crear transacción y actualizar saldos atómicamente
     tx_in = TransactionCreate(
