@@ -17,11 +17,20 @@
                     <div id="alertBox" class="alert d-none" role="alert"></div>
 
                     <form id="registerForm">
-                        <div class="mb-3">
-                            <label for="fullName" class="form-label small fw-semibold">Nombre Completo</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
-                                <input type="text" class="form-control" id="fullName" placeholder="Juan Pérez" required minlength="2" maxlength="100">
+                        <div class="row g-2 mb-3">
+                            <div class="col-sm-6">
+                                <label for="firstName" class="form-label small fw-semibold">Nombre(s) *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+                                    <input type="text" class="form-control" id="firstName" placeholder="Ej: Donato" required minlength="2" maxlength="50">
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="lastName" class="form-label small fw-semibold">Apellido(s) *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+                                    <input type="text" class="form-control" id="lastName" placeholder="Ej: Oña" required minlength="2" maxlength="50">
+                                </div>
                             </div>
                         </div>
 
@@ -52,17 +61,23 @@
 
                         <div class="row g-2 mb-4">
                             <div class="col-sm-6">
-                                <label for="password" class="form-label small fw-semibold">Contraseña</label>
+                                <label for="password" class="form-label small fw-semibold">Contraseña *</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light"><i class="bi bi-key"></i></span>
                                     <input type="password" class="form-control" id="password" placeholder="Mínimo 8 car." required minlength="8">
+                                    <button class="btn btn-outline-secondary" type="button" id="toggleRegPasswordBtn" title="Mostrar u ocultar contraseña">
+                                        <i class="bi bi-eye" id="toggleRegPasswordIcon"></i>
+                                    </button>
                                 </div>
                             </div>
                             <div class="col-sm-6">
-                                <label for="confirmPassword" class="form-label small fw-semibold">Confirmar Contraseña</label>
+                                <label for="confirmPassword" class="form-label small fw-semibold">Confirmar Contraseña *</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light"><i class="bi bi-check2-circle"></i></span>
                                     <input type="password" class="form-control" id="confirmPassword" placeholder="Repite la clave" required minlength="8">
+                                    <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPasswordBtn" title="Mostrar u ocultar contraseña">
+                                        <i class="bi bi-eye" id="toggleConfirmPasswordIcon"></i>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -86,13 +101,31 @@
 
 {% block extra_scripts %}
 <script>
+// Alternar visibilidad de contraseñas
+function setupPasswordToggle(btnId, inputId, iconId) {
+    const btn = document.getElementById(btnId);
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(iconId);
+    if (btn && input && icon) {
+        btn.addEventListener('click', () => {
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+            icon.className = isPassword ? 'bi bi-eye-slash' : 'bi bi-eye';
+        });
+    }
+}
+setupPasswordToggle('toggleRegPasswordBtn', 'password', 'toggleRegPasswordIcon');
+setupPasswordToggle('toggleConfirmPasswordBtn', 'confirmPassword', 'toggleConfirmPasswordIcon');
+
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const alertBox = document.getElementById('alertBox');
     const submitBtn = document.getElementById('submitBtn');
     const btnSpinner = document.getElementById('btnSpinner');
 
-    const fullName = document.getElementById('fullName').value.trim();
+    const firstName = document.getElementById('firstName').value.trim();
+    const lastName = document.getElementById('lastName').value.trim();
+    const fullName = `${firstName} ${lastName}`.trim();
     const email = document.getElementById('email').value.trim();
     const currency = document.getElementById('currency').value;
     const password = document.getElementById('password').value;

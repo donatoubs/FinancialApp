@@ -57,14 +57,245 @@
         </a>
     </nav>
 
+    <!-- Modal de Perfil y Configuración del Usuario -->
+    <div class="modal fade" id="userProfileModal" tabindex="-1" aria-labelledby="userProfileModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom px-4 py-3 bg-light rounded-top-4">
+                    <div class="d-flex align-items-center">
+                        <div class="p-2 rounded-3 bg-primary-subtle text-primary me-2">
+                            <i class="bi bi-person-gear fs-4"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0" id="userProfileModalLabel">Mi Perfil y Configuración</h5>
+                            <span class="text-muted very-small">Actualiza tus datos y preferencias de cuenta</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div id="profileAlertModal" class="alert d-none small mb-3" role="alert"></div>
+
+                    <form id="profileForm">
+                        <div class="mb-3">
+                            <label for="modalProfileFullName" class="form-label small fw-semibold">Nombre Completo *</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+                                <input type="text" class="form-control" id="modalProfileFullName" placeholder="Tu nombre completo" required minlength="2" maxlength="100">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="modalProfileEmail" class="form-label small fw-semibold">Correo Electrónico (Registrado)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-envelope-lock"></i></span>
+                                <input type="email" class="form-control bg-light" id="modalProfileEmail" readonly disabled>
+                            </div>
+                            <span class="text-muted very-small">El correo no puede modificarse por seguridad.</span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="modalProfileCurrency" class="form-label small fw-semibold">Moneda Principal de la App *</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-currency-exchange"></i></span>
+                                <select class="form-select" id="modalProfileCurrency" required>
+                                    <option value="USD">USD - Dólar Estadounidense ($) [Ecuador]</option>
+                                    <option value="EUR">EUR - Euro (€)</option>
+                                    <option value="COP">COP - Peso Colombiano ($)</option>
+                                    <option value="MXN">MXN - Peso Mexicano ($)</option>
+                                    <option value="PEN">PEN - Sol Peruano (S/)</option>
+                                    <option value="ARS">ARS - Peso Argentino ($)</option>
+                                    <option value="CLP">CLP - Peso Chileno ($)</option>
+                                    <option value="BRL">BRL - Real Brasileño (R$)</option>
+                                    <option value="GBP">GBP - Libra Esterlina (£)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <hr class="my-3 opacity-10">
+
+                        <div class="mb-2">
+                            <span class="small fw-semibold text-secondary d-block mb-2">
+                                <i class="bi bi-key me-1"></i>Cambiar Contraseña <span class="text-muted fw-normal">(Opcional: dejar en blanco para mantener la actual)</span>
+                            </span>
+                            <div class="row g-2">
+                                <div class="col-sm-6">
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="modalProfileNewPassword" placeholder="Nueva clave" minlength="8">
+                                        <button class="btn btn-outline-secondary" type="button" id="toggleProfilePwdBtn" title="Ver clave">
+                                            <i class="bi bi-eye" id="toggleProfilePwdIcon"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="modalProfileConfirmPassword" placeholder="Repite la clave" minlength="8">
+                                        <button class="btn btn-outline-secondary" type="button" id="toggleProfileConfPwdBtn" title="Ver clave">
+                                            <i class="bi bi-eye" id="toggleProfileConfPwdIcon"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <button type="button" class="btn btn-secondary rounded-3 px-3" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" id="btnSaveProfile" class="btn btn-primary rounded-3 px-4 fw-semibold">
+                                <span id="spinnerSaveProfile" class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
+                                Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     
-    <!-- Script Global de Navegación Móvil -->
+    <!-- Script Global de Navegación y Perfil -->
     <script>
+    // -------------------------------------------------------------------------
+    // Lógica Global de Perfil y Configuración
+    // -------------------------------------------------------------------------
+    function openUserProfileModal() {
+        const token = localStorage.getItem('financial_token');
+        if (!token) return;
+
+        const alertBox = document.getElementById('profileAlertModal');
+        if (alertBox) alertBox.className = 'alert d-none';
+
+        // Cargar datos cacheados
+        const userJson = localStorage.getItem('financial_user');
+        if (userJson) {
+            try {
+                const user = JSON.parse(userJson);
+                document.getElementById('modalProfileFullName').value = user.full_name || '';
+                document.getElementById('modalProfileEmail').value = user.email || '';
+                document.getElementById('modalProfileCurrency').value = user.currency_preference || 'USD';
+            } catch(e) {}
+        }
+
+        // Limpiar campos de contraseña
+        const p1 = document.getElementById('modalProfileNewPassword');
+        const p2 = document.getElementById('modalProfileConfirmPassword');
+        if (p1) p1.value = '';
+        if (p2) p2.value = '';
+
+        // Abrir el modal de Bootstrap
+        const modalElem = document.getElementById('userProfileModal');
+        if (modalElem) {
+            bootstrap.Modal.getOrCreateInstance(modalElem).show();
+        }
+    }
+
+    // Alternar visibilidad de contraseñas en el modal de perfil
+    function bindToggle(btnId, inputId, iconId) {
+        const btn = document.getElementById(btnId);
+        const input = document.getElementById(inputId);
+        const icon = document.getElementById(iconId);
+        if (btn && input && icon) {
+            btn.addEventListener('click', () => {
+                const isPwd = input.type === 'password';
+                input.type = isPwd ? 'text' : 'password';
+                icon.className = isPwd ? 'bi bi-eye-slash' : 'bi bi-eye';
+            });
+        }
+    }
+    bindToggle('toggleProfilePwdBtn', 'modalProfileNewPassword', 'toggleProfilePwdIcon');
+    bindToggle('toggleProfileConfPwdBtn', 'modalProfileConfirmPassword', 'toggleProfileConfPwdIcon');
+
+    // Guardar cambios del perfil
     document.addEventListener('DOMContentLoaded', () => {
+        const profileForm = document.getElementById('profileForm');
+        if (profileForm) {
+            profileForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const token = localStorage.getItem('financial_token');
+                if (!token) return;
+
+                const alertBox = document.getElementById('profileAlertModal');
+                const btnSave = document.getElementById('btnSaveProfile');
+                const spinner = document.getElementById('spinnerSaveProfile');
+
+                const fullName = document.getElementById('modalProfileFullName').value.trim();
+                const currency = document.getElementById('modalProfileCurrency').value;
+                const newPwd = document.getElementById('modalProfileNewPassword').value;
+                const confPwd = document.getElementById('modalProfileConfirmPassword').value;
+
+                if (newPwd && newPwd !== confPwd) {
+                    alertBox.className = 'alert alert-danger d-block';
+                    alertBox.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i> Las nuevas contraseñas no coinciden.';
+                    return;
+                }
+
+                btnSave.disabled = true;
+                spinner.classList.remove('d-none');
+                alertBox.className = 'alert d-none';
+
+                const updatePayload = {
+                    full_name: fullName,
+                    currency_preference: currency
+                };
+                if (newPwd) {
+                    updatePayload.password = newPwd;
+                }
+
+                try {
+                    const res = await fetch('/api/v1/auth/me', {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(updatePayload)
+                    });
+                    const data = await res.json();
+
+                    if (res.ok) {
+                        alertBox.className = 'alert alert-success d-block';
+                        alertBox.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> ¡Perfil actualizado con éxito!';
+
+                        // Actualizar localStorage
+                        localStorage.setItem('financial_user', JSON.stringify(data));
+
+                        // Actualizar en la barra superior en tiempo real
+                        document.querySelectorAll('#navUserName').forEach(el => el.textContent = data.full_name);
+                        document.querySelectorAll('#navUserCurrency').forEach(el => el.textContent = data.currency_preference);
+
+                        setTimeout(() => {
+                            const modalElem = document.getElementById('userProfileModal');
+                            if (modalElem) {
+                                bootstrap.Modal.getInstance(modalElem)?.hide();
+                            }
+                        }, 1200);
+                    } else {
+                        alertBox.className = 'alert alert-danger d-block';
+                        alertBox.textContent = data.detail || 'Error al actualizar el perfil.';
+                    }
+                } catch (err) {
+                    alertBox.className = 'alert alert-danger d-block';
+                    alertBox.textContent = `Error de conexión: ${err.message}`;
+                } finally {
+                    btnSave.disabled = false;
+                    spinner.classList.add('d-none');
+                }
+            });
+        }
+
+        // Listener global para hacer clic en el nombre de usuario y abrir perfil
+        document.addEventListener('click', (e) => {
+            const trigger = e.target.closest('#navUserName, #navUserCurrency, #authNavUser span, .user-profile-trigger');
+            if (trigger) {
+                e.preventDefault();
+                openUserProfileModal();
+            }
+        });
+
+        // Configuración de navegación móvil activa
         const path = window.location.pathname;
         const navMap = {
             '/dashboard': 'mobNavDashboard',

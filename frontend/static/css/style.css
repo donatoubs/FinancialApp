@@ -57,6 +57,20 @@ body {
     border-color: var(--primary-hover);
 }
 
+/* Gatillo interactivo de Perfil y Configuración en Navbar */
+#authNavUser span, .user-profile-trigger {
+    cursor: pointer !important;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+#authNavUser span:hover, .user-profile-trigger:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+    color: #38bdf8 !important;
+}
+
 /* Barra de Navegación Inferior Nativa para Móviles (iOS / Android) */
 .mobile-bottom-nav {
     position: fixed;
