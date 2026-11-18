@@ -14,8 +14,11 @@ settings = get_settings()
 
 # Normalización de la URL de conexión para compatibilidad con Supabase y Render
 db_url = settings.DATABASE_URL
-if db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
+# Siempre psycopg2 (el driver instalado): SQLAlchemy 2.1+ usa psycopg 3 por defecto con "postgresql://"
+for prefix in ("postgres://", "postgresql://"):
+    if db_url.startswith(prefix):
+        db_url = "postgresql+psycopg2://" + db_url[len(prefix):]
+        break
 
 # Configuración del motor de base de datos
 engine = create_engine(
