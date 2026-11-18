@@ -1,269 +1,134 @@
-{% extends "base.html" %}
+{% extends "app.html" %}
 
-{% block title %}Presupuestos y Reportes - FinancialApp{% endblock %}
+{% block title %}Presupuestos · FinancialApp{% endblock %}
 
 {% block extra_head %}
 <style>
-.budget-card {
-    border-radius: 16px;
-    border: none;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.budget-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.06);
-}
-.progress {
-    height: 12px;
-    border-radius: 8px;
-    background-color: #e2e8f0;
-}
-.progress-bar {
-    border-radius: 8px;
-    transition: width 0.6s ease;
-}
+.period { display: flex; gap: 8px; }
+.period select { width: auto; }
+.notices { margin: 0 0 8px; padding: 0; list-style: none; border-top: 1px solid var(--rule-strong); }
+.notice { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 16px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.notice strong::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--safety); margin-right: 8px; vertical-align: 1px; }
+.notice.is-danger strong::before { background: var(--expense); }
+.notice strong { font-size: 0.9375rem; }
+.notice span { grid-column: 1; font-size: 0.8125rem; color: var(--ink-muted); }
+.notice a { grid-row: 1 / span 2; grid-column: 2; font-size: 0.875rem; font-weight: 600; }
+.export { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; }
+@media (min-width: 992px) { .export { grid-template-columns: 180px 180px 1fr auto; } }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Navbar Superior Estandarizada -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm py-3">
-    <div class="container">
-        <a class="navbar-brand fw-bold d-flex align-items-center" href="/">
-            <img src="/static/img/logo.png" alt="Logo" height="34" class="me-2 rounded-2">
-            FinancialApp
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
-                <li class="nav-item">
-                    <a class="nav-link" href="/"><i class="bi bi-house me-1"></i> Inicio</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/dashboard"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/accounts"><i class="bi bi-bank me-1"></i> Cuentas</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/cards"><i class="bi bi-credit-card me-1"></i> Tarjetas</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/transactions"><i class="bi bi-arrow-left-right me-1"></i> Movimientos</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active fw-semibold" href="/budgets"><i class="bi bi-pie-chart me-1"></i> Presupuestos</a>
-                </li>
-            </ul>
-            <div class="d-flex align-items-center gap-3">
-                <span class="text-light small">
-                    <i class="bi bi-person-circle text-primary me-1"></i>
-                    <strong id="navUserName">Usuario</strong> (<span id="navUserCurrency" class="badge bg-secondary">USD</span>)
-                </span>
-                <button id="logoutBtn" class="btn btn-outline-danger btn-sm px-3 rounded-3">
-                    <i class="bi bi-box-arrow-right me-1"></i> Salir
-                </button>
-            </div>
-        </div>
+{% set months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"] %}
+<div class="page-head">
+    <div>
+        <h1>Presupuestos</h1>
+        <p>Límites de gasto por categoría y reportes en CSV.</p>
     </div>
-</nav>
-
-<div class="container py-5">
-    <!-- Encabezado y Selector de Periodo -->
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
-        <div>
-            <h2 class="fw-bold mb-1"><i class="bi bi-pie-chart text-primary me-2"></i>Presupuestos y Reportes</h2>
-            <p class="text-muted mb-0">Establece topes de gasto mensual, monitorea tu consumo en vivo y descarga tus reportes.</p>
+    <div class="page-actions">
+        <div class="period">
+            <select class="form-select form-select-sm" id="budgetMonthSelect" aria-label="Mes" onchange="loadBudgets()">
+                {% for m in months %}<option value="{{ loop.index }}">{{ m }}</option>{% endfor %}
+            </select>
+            <select class="form-select form-select-sm" id="budgetYearSelect" aria-label="Año" onchange="loadBudgets()"></select>
         </div>
-        <div class="d-flex align-items-center gap-2">
-            <div class="input-group input-group-sm">
-                <select class="form-select form-select-sm fw-semibold" id="budgetMonthSelect" onchange="loadBudgets()">
-                    <option value="1">Enero</option>
-                    <option value="2">Febrero</option>
-                    <option value="3">Marzo</option>
-                    <option value="4">Abril</option>
-                    <option value="5">Mayo</option>
-                    <option value="6">Junio</option>
-                    <option value="7">Julio</option>
-                    <option value="8">Agosto</option>
-                    <option value="9">Septiembre</option>
-                    <option value="10">Octubre</option>
-                    <option value="11">Noviembre</option>
-                    <option value="12">Diciembre</option>
-                </select>
-                <select class="form-select form-select-sm fw-semibold" id="budgetYearSelect" onchange="loadBudgets()">
-                    <option value="2025">2025</option>
-                    <option value="2026" selected>2026</option>
-                    <option value="2027">2027</option>
-                </select>
-            </div>
-            <button class="btn btn-primary btn-sm px-3 py-2 rounded-3 text-nowrap fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#createBudgetModal" onclick="prepareBudgetModal()">
-                <i class="bi bi-plus-circle me-1"></i> Asignar Presupuesto
-            </button>
-        </div>
-    </div>
-
-    <!-- Alertas globales -->
-    <div id="globalAlert" class="alert d-none" role="alert"></div>
-
-    <!-- Centro de Alertas Financieras Activas -->
-    <div id="alertsContainer" class="mb-4 d-none">
-        <!-- Renderizado dinámicamente con JS -->
-    </div>
-
-    <!-- KPIs de Presupuesto del Mes -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="card budget-card shadow-sm bg-white p-3 h-100 border-start border-primary border-4">
-                <span class="text-muted very-small fw-bold text-uppercase">Presupuestado Total</span>
-                <h4 class="fw-bold text-dark mb-0 mt-1" id="kpiTotalBudgeted">$0.00</h4>
-                <span class="text-muted very-small" id="kpiMonthLabel">Mes actual</span>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card budget-card shadow-sm bg-white p-3 h-100 border-start border-danger border-4">
-                <span class="text-muted very-small fw-bold text-uppercase">Gastado Real</span>
-                <h4 class="fw-bold text-danger mb-0 mt-1" id="kpiTotalSpent">$0.00</h4>
-                <span class="text-secondary very-small" id="kpiSpentPercent">0% del presupuesto</span>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card budget-card shadow-sm bg-white p-3 h-100 border-start border-success border-4">
-                <span class="text-muted very-small fw-bold text-uppercase">Disponible Restante</span>
-                <h4 class="fw-bold text-success mb-0 mt-1" id="kpiTotalRemaining">$0.00</h4>
-                <span class="text-secondary very-small">Cupo libre para gastar</span>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card budget-card shadow-sm bg-white p-3 h-100 border-start border-info border-4">
-                <span class="text-muted very-small fw-bold text-uppercase">Salud Presupuestaria</span>
-                <div class="d-flex gap-2 mt-2">
-                    <span class="badge bg-success-subtle text-success small" id="kpiCountHealthy" title="Presupuestos saludables">0 Bien</span>
-                    <span class="badge bg-warning-subtle text-warning small" id="kpiCountWarning" title="Cerca del límite">0 Alerta</span>
-                    <span class="badge bg-danger-subtle text-danger small" id="kpiCountExceeded" title="Superados">0 Excedidos</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Lista / Grilla de Presupuestos por Categoría -->
-    <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="fw-bold text-dark mb-0"><i class="bi bi-card-checklist text-primary me-2"></i>Presupuestos por Categoría</h5>
-            <span class="text-muted small" id="budgetCountLabel">0 categorías presupuestadas</span>
-        </div>
-
-        <div class="row g-3" id="budgetsGrid">
-            <div class="col-12 text-center py-5 text-muted">
-                <div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
-                Cargando presupuestos...
-            </div>
-        </div>
-    </div>
-
-    <!-- SECCIÓN: EXPORTACIÓN DE REPORTES FINANCIEROS -->
-    <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-                <h5 class="fw-bold text-dark mb-1"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Exportar Reportes Financieros</h5>
-                <p class="text-muted small mb-0">Descarga tu historial completo de movimientos en formato CSV para Microsoft Excel o contabilidad.</p>
-            </div>
-        </div>
-
-        <form id="exportReportForm" class="p-3 bg-light rounded-3 border">
-            <div class="row g-3 align-items-end">
-                <div class="col-md-3">
-                    <label class="form-label very-small fw-semibold">Fecha Inicial</label>
-                    <input type="date" class="form-control form-control-sm" id="exportStartDate">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label very-small fw-semibold">Fecha Final</label>
-                    <input type="date" class="form-control form-control-sm" id="exportEndDate">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label very-small fw-semibold">Tipo de Operación</label>
-                    <select class="form-select form-select-sm" id="exportTxType">
-                        <option value="">Todos los movimientos</option>
-                        <option value="income">Solo Ingresos</option>
-                        <option value="expense">Solo Gastos</option>
-                        <option value="transfer">Solo Transferencias</option>
-                        <option value="card_payment">Solo Pagos de Tarjeta</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <button type="button" class="btn btn-success btn-sm w-100 rounded-3 fw-semibold py-2" onclick="downloadCsvReport()">
-                        <i class="bi bi-download me-1"></i> Descargar CSV (Excel)
-                    </button>
-                </div>
-            </div>
-        </form>
+        <button class="btn btn-primary" onclick="openBudgetModal()"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Nuevo presupuesto</button>
     </div>
 </div>
 
-<!-- MODAL: ASIGNAR / EDITAR PRESUPUESTO -->
-<div class="modal fade" id="createBudgetModal" tabindex="-1" aria-hidden="true">
+<div id="globalAlert" class="alert d-none" role="alert"></div>
+<div id="alertsContainer"></div>
+
+<dl class="ledger">
+    <div><dt>Presupuestado</dt><dd id="sumBudgeted">—</dd></div>
+    <div><dt>Gastado</dt><dd id="sumSpent">—<small></small></dd></div>
+    <div><dt>Disponible</dt><dd id="sumRemaining">—</dd></div>
+    <div><dt>Estado</dt><dd id="sumHealth">—</dd></div>
+</dl>
+
+<section class="mb-4" aria-labelledby="budgetsTitle">
+    <div class="panel-head">
+        <h2 class="section-title" id="budgetsTitle">Por categoría</h2>
+        <span class="small text-muted" id="budgetCountLabel"></span>
+    </div>
+    <div class="rows" id="budgetsList"><div class="empty">Cargando…</div></div>
+</section>
+
+<section class="panel" aria-labelledby="exportTitle">
+    <h2 class="section-title mb-1" id="exportTitle">Exportar movimientos</h2>
+    <p class="small text-muted mb-3">Archivo CSV que se abre en Excel o Numbers.</p>
+    <div class="export">
+        <div>
+            <label class="form-label" for="exportStartDate">Desde</label>
+            <input type="date" class="form-control form-control-sm" id="exportStartDate">
+        </div>
+        <div>
+            <label class="form-label" for="exportEndDate">Hasta</label>
+            <input type="date" class="form-control form-control-sm" id="exportEndDate">
+        </div>
+        <div>
+            <label class="form-label" for="exportTxType">Tipo</label>
+            <select class="form-select form-select-sm" id="exportTxType">
+                <option value="">Todos</option>
+                <option value="income">Ingresos</option>
+                <option value="expense">Gastos</option>
+                <option value="transfer">Transferencias</option>
+                <option value="card_payment">Pagos de tarjeta</option>
+            </select>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="downloadCsvReport()"><i class="bi bi-download me-1" aria-hidden="true"></i>Descargar CSV</button>
+    </div>
+</section>
+
+<!-- Crear o editar presupuesto (incluye eliminar al editar) -->
+<div class="modal fade" id="budgetModal" tabindex="-1" aria-labelledby="budgetModalTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 rounded-4 shadow">
-            <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle text-primary me-2"></i>Asignar Presupuesto Mensual</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="budgetModalTitle">Nuevo presupuesto</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
-            <form id="budgetForm">
-                <div class="modal-body pt-3">
-                    <div id="budgetModalAlert" class="alert d-none" role="alert"></div>
-
+            <div class="modal-body">
+                <div id="budgetModalAlert" class="alert d-none" role="alert"></div>
+                <form id="budgetForm">
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">Categoría de Gasto *</label>
-                        <select class="form-select" id="budgetCategorySelect" required>
-                            <option value="" disabled selected>Selecciona categoría...</option>
-                        </select>
+                        <label class="form-label" for="budgetCategorySelect">Categoría</label>
+                        <select class="form-select" id="budgetCategorySelect" required></select>
                     </div>
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Mes *</label>
-                            <select class="form-select" id="formBudgetMonth" required>
-                                <option value="1">Enero</option>
-                                <option value="2">Febrero</option>
-                                <option value="3">Marzo</option>
-                                <option value="4">Abril</option>
-                                <option value="5">Mayo</option>
-                                <option value="6">Junio</option>
-                                <option value="7">Julio</option>
-                                <option value="8">Agosto</option>
-                                <option value="9">Septiembre</option>
-                                <option value="10">Octubre</option>
-                                <option value="11">Noviembre</option>
-                                <option value="12">Diciembre</option>
+                    <div class="row g-2 mb-3">
+                        <div class="col-7">
+                            <label class="form-label" for="formBudgetMonth">Mes</label>
+                            <select class="form-select" id="formBudgetMonth">
+                                {% for m in months %}<option value="{{ loop.index }}">{{ m }}</option>{% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Año *</label>
-                            <input type="number" class="form-control" id="formBudgetYear" value="2026" min="2025" max="2030" required>
+                        <div class="col-5">
+                            <label class="form-label" for="formBudgetYear">Año</label>
+                            <input type="number" class="form-control" id="formBudgetYear" min="2020" max="2100" required inputmode="numeric">
                         </div>
                     </div>
-
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">Límite Máximo de Gasto (USD) *</label>
-                        <input type="number" step="0.01" min="1" inputmode="decimal" class="form-control form-control-lg fw-bold" id="budgetLimitAmount" placeholder="Ej: 300.00" required>
+                        <label class="form-label" for="budgetLimitAmount">Límite de gasto (USD)</label>
+                        <input type="number" step="0.01" min="1" class="form-control" id="budgetLimitAmount" required inputmode="decimal">
                     </div>
-
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">Umbral de Alerta de Consumo (%)</label>
-                        <input type="number" min="50" max="95" class="form-control" id="budgetAlertThreshold" value="80">
-                        <span class="text-muted very-small">Te alertará cuando alcances este porcentaje de gasto.</span>
+                        <label class="form-label" for="budgetAlertThreshold">Avisarme al llegar al (%)</label>
+                        <input type="number" min="50" max="95" class="form-control" id="budgetAlertThreshold" value="80" inputmode="numeric">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100" id="budgetSubmit">Guardar</button>
+                </form>
+                <div class="danger-zone" id="budgetDangerZone" hidden>
+                    <div class="ask">
+                        <p>Eliminar el presupuesto no borra tus gastos.</p>
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-danger="ask">Eliminar presupuesto…</button>
+                    </div>
+                    <div class="confirm">
+                        <span class="small fw-semibold">¿Eliminar este presupuesto?</span>
+                        <button type="button" class="btn btn-danger btn-sm" data-danger="confirm">Sí, eliminar</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-danger="cancel">Cancelar</button>
                     </div>
                 </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary rounded-3 px-4 fw-semibold" id="budgetSubmitBtn">
-                        <span id="budgetSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
-                        Guardar Presupuesto
-                    </button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
@@ -272,282 +137,190 @@
 {% block extra_scripts %}
 <script>
 let allCategories = [];
-const token = localStorage.getItem('financial_token');
-const userJson = localStorage.getItem('financial_user');
+let budgets = [];
 
-if (!token || !userJson) {
-    window.location.href = '/login';
-}
-
-const user = JSON.parse(userJson || '{}');
-document.getElementById('navUserName').textContent = user.full_name || 'Usuario';
-document.getElementById('navUserCurrency').textContent = user.currency_preference || 'USD';
-
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    localStorage.removeItem('financial_token');
-    localStorage.removeItem('financial_user');
-    window.location.href = '/login';
-});
-
-async function authFetch(url, options = {}) {
-    options.headers = {
-        ...options.headers,
-        'Authorization': `Bearer ${token}`
-    };
-    const res = await fetch(url, options);
-    if (res.status === 401) {
-        localStorage.clear();
-        window.location.href = '/login';
-        throw new Error('Sesión expirada');
-    }
-    return res;
-}
-
-// Inicializar selectores de fecha
-function initDateSelectors() {
+function initPeriod() {
     const today = new Date();
+    const year = document.getElementById('budgetYearSelect');
+    for (let y = today.getFullYear() - 1; y <= today.getFullYear() + 1; y++) {
+        year.insertAdjacentHTML('beforeend', `<option value="${y}">${y}</option>`);
+    }
+    year.value = today.getFullYear();
     document.getElementById('budgetMonthSelect').value = today.getMonth() + 1;
-    document.getElementById('budgetYearSelect').value = today.getFullYear();
-    document.getElementById('formBudgetMonth').value = today.getMonth() + 1;
-    document.getElementById('formBudgetYear').value = today.getFullYear();
 }
 
-// Cargar categorías
 async function loadCategories() {
-    try {
-        const res = await authFetch('/api/v1/categories?category_type=expense');
-        if (res.ok) {
-            allCategories = await res.json();
-            const sel = document.getElementById('budgetCategorySelect');
-            sel.innerHTML = '<option value="" disabled selected>Selecciona categoría...</option>' +
-                allCategories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-        }
-    } catch (e) {
-        console.warn(e);
-    }
+    const res = await authFetch('/api/v1/categories?category_type=expense');
+    if (!res.ok) return;
+    allCategories = await res.json();
+    document.getElementById('budgetCategorySelect').innerHTML = '<option value="" disabled selected>Elige…</option>'
+        + allCategories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
 }
 
-// Cargar Alertas Financieras
 async function loadFinancialAlerts() {
-    try {
-        const res = await authFetch('/api/v1/budgets/alerts');
-        if (!res.ok) return;
-        const data = await res.json();
-        const container = document.getElementById('alertsContainer');
-
-        if (data.total_alerts > 0) {
-            container.classList.remove('d-none');
-            container.innerHTML = data.alerts.map(a => `
-                <div class="alert alert-${a.severity === 'danger' ? 'danger' : 'warning'} alert-dismissible fade show rounded-4 shadow-sm border-0 d-flex align-items-center mb-2" role="alert">
-                    <i class="bi ${a.severity === 'danger' ? 'bi-exclamation-octagon-fill' : 'bi-exclamation-triangle-fill'} fs-4 me-3"></i>
-                    <div class="flex-grow-1">
-                        <strong class="d-block">${a.title}</strong>
-                        <span class="small">${a.message}</span>
-                    </div>
-                    <a href="${a.target_url}" class="btn btn-sm btn-${a.severity === 'danger' ? 'danger' : 'warning'} rounded-3 ms-3">Ver Detalle</a>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>`).join('');
-        } else {
-            container.classList.add('d-none');
-        }
-    } catch (e) {
-        console.warn(e);
-    }
+    const res = await authFetch('/api/v1/budgets/alerts');
+    if (!res.ok) return;
+    const data = await res.json();
+    // Los avisos de presupuesto ya se ven en cada fila; aquí solo quedan los de tarjetas
+    const alerts = data.alerts.filter(a => !String(a.id).startsWith('budget_'));
+    document.getElementById('alertsContainer').innerHTML = alerts.length ? `<ul class="notices">${alerts.map(a => `
+        <li class="notice${a.severity === 'danger' ? ' is-danger' : ''}">
+            <strong>${esc(a.title)}</strong>
+            <span>${esc(a.message)}</span>
+            ${a.target_url ? `<a href="${esc(a.target_url)}">Ver</a>` : ''}
+        </li>`).join('')}</ul>` : '';
 }
 
-// Cargar Presupuestos y Resumen
 async function loadBudgets() {
     const month = document.getElementById('budgetMonthSelect').value;
     const year = document.getElementById('budgetYearSelect').value;
-
     try {
         const res = await authFetch(`/api/v1/budgets/summary?month=${month}&year=${year}`);
-        if (!res.ok) throw new Error('Error al cargar presupuestos');
-        const summary = await res.json();
-
-        // Renderizar KPIs
-        document.getElementById('kpiTotalBudgeted').textContent = `$${parseFloat(summary.total_budgeted).toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
-        document.getElementById('kpiTotalSpent').textContent = `$${parseFloat(summary.total_spent).toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
-        document.getElementById('kpiSpentPercent').textContent = `${summary.overall_percentage}% del presupuesto`;
-        
-        const rem = parseFloat(summary.total_remaining);
-        const remElem = document.getElementById('kpiTotalRemaining');
-        remElem.textContent = `$${rem.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
-        remElem.className = `fw-bold mb-0 mt-1 ${rem >= 0 ? 'text-success' : 'text-danger'}`;
-
-        document.getElementById('kpiMonthLabel').textContent = summary.month_name;
-        document.getElementById('kpiCountHealthy').textContent = `${summary.count_healthy} Bien`;
-        document.getElementById('kpiCountWarning').textContent = `${summary.count_warning} Alerta`;
-        document.getElementById('kpiCountExceeded').textContent = `${summary.count_exceeded} Excedidos`;
-
-        document.getElementById('budgetCountLabel').textContent = `${summary.budgets.length} categorías presupuestadas`;
-
-        renderBudgetsGrid(summary.budgets);
+        const s = await res.json();
+        if (!res.ok) throw new Error(apiError(s, 'No se pudieron cargar los presupuestos.'));
+        budgets = s.budgets;
+        document.getElementById('sumBudgeted').textContent = money(s.total_budgeted);
+        document.getElementById('sumSpent').innerHTML = `${money(s.total_spent)}<small>${pct(s.overall_percentage)} del total</small>`;
+        const rem = Number(s.total_remaining);
+        const remEl = document.getElementById('sumRemaining');
+        remEl.textContent = money(rem);
+        remEl.className = rem < 0 ? 'amount-out' : '';
+        const parts = [];
+        if (s.count_exceeded) parts.push(`${s.count_exceeded} superado${s.count_exceeded > 1 ? 's' : ''}`);
+        if (s.count_warning) parts.push(`${s.count_warning} cerca del límite`);
+        document.getElementById('sumHealth').innerHTML = budgets.length
+            ? (parts.length ? `${s.count_healthy} en orden<small>${parts.join(' · ')}</small>` : 'Todo en orden')
+            : '—';
+        document.getElementById('budgetCountLabel').textContent = `${s.month_name} · ${budgets.length} ${budgets.length === 1 ? 'categoría' : 'categorías'}`;
+        renderBudgets();
     } catch (err) {
-        document.getElementById('budgetsGrid').innerHTML = `
-            <div class="col-12 text-center py-4 text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i> ${err.message}</div>`;
+        showAlert('danger', err.message, 0);
     }
 }
 
-// Renderizar Tarjetas de Presupuesto
-function renderBudgetsGrid(budgets) {
-    const container = document.getElementById('budgetsGrid');
-    if (!budgets || budgets.length === 0) {
-        container.innerHTML = `
-            <div class="col-12 text-center py-5">
-                <i class="bi bi-pie-chart fs-1 text-muted d-block mb-2"></i>
-                <h6 class="fw-bold">No hay presupuestos asignados para este mes</h6>
-                <p class="text-muted small mb-0">Haz clic en "Asignar Presupuesto" para fijar topes de gasto a tus categorías.</p>
-            </div>`;
+function renderBudgets() {
+    const list = document.getElementById('budgetsList');
+    if (!budgets.length) {
+        list.innerHTML = '<div class="empty"><i class="bi bi-pie-chart" aria-hidden="true"></i>No hay presupuestos para este mes.</div>';
         return;
     }
-
-    container.innerHTML = budgets.map(b => {
-        let barColor = '#10b981'; // Verde
-        let statusBadge = '<span class="badge bg-success-subtle text-success rounded-pill">Saludable</span>';
-
-        if (b.status === 'warning') {
-            barColor = '#f59e0b'; // Amarillo
-            statusBadge = `<span class="badge bg-warning-subtle text-dark rounded-pill">Alerta (${b.spent_percentage}%)</span>`;
-        } else if (b.status === 'exceeded') {
-            barColor = '#ef4444'; // Rojo
-            statusBadge = `<span class="badge bg-danger-subtle text-danger rounded-pill">¡Superado! (${b.spent_percentage}%)</span>`;
-        }
-
-        const barWidth = Math.min(100, b.spent_percentage);
-
+    list.innerHTML = budgets.map(b => {
+        const used = Number(b.spent_percentage) || 0;
+        const rem = Number(b.remaining_amount);
+        const state = b.status === 'exceeded' ? '<span class="chip chip-danger">Superado</span>'
+                    : b.status === 'warning' ? '<span class="chip chip-alert">Cerca del límite</span>' : '';
+        const ink = b.status === 'exceeded' ? 'var(--expense)' : b.status === 'warning' ? 'var(--safety)' : 'var(--carbon-500)';
         return `
-        <div class="col-md-6 col-lg-4">
-            <div class="card budget-card border rounded-4 p-3 bg-white h-100 shadow-sm">
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <div class="d-flex align-items-center">
-                        <div class="p-2 rounded-3 me-2" style="background-color: ${b.category_color}20; color: ${b.category_color};">
-                            <i class="bi ${b.category_icon} fs-5"></i>
-                        </div>
-                        <div>
-                            <h6 class="fw-bold mb-0 text-dark">${b.category_name}</h6>
-                            <span class="text-muted very-small">Límite: $${parseFloat(b.limit_amount).toFixed(2)}</span>
-                        </div>
-                    </div>
-                    ${statusBadge}
-                </div>
-
-                <!-- Barra de Progreso -->
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between very-small fw-semibold mb-1">
-                        <span class="text-muted">Gastado: $${parseFloat(b.spent_amount).toFixed(2)}</span>
-                        <span class="${b.remaining_amount >= 0 ? 'text-success' : 'text-danger'}">
-                            ${b.remaining_amount >= 0 ? `Quedan $${parseFloat(b.remaining_amount).toFixed(2)}` : `Excedido por $${Math.abs(parseFloat(b.remaining_amount)).toFixed(2)}`}
-                        </span>
-                    </div>
-                    <div class="progress">
-                        <div class="progress-bar" role="progressbar" style="width: ${barWidth}%; background-color: ${barColor};" aria-valuenow="${barWidth}" aria-valuemin="0" aria-valuemax="100"></div>
-                    </div>
-                </div>
-
-                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                    <span class="text-muted very-small"><i class="bi bi-bell me-1"></i> Alerta al ${b.alert_threshold}%</span>
-                    <button class="btn btn-outline-danger btn-sm p-1 px-2 rounded-2" onclick="deleteBudget(${b.id}, '${b.category_name}')" title="Eliminar Presupuesto">
-                        <i class="bi bi-trash3"></i>
-                    </button>
-                </div>
+        <div class="ink-row" style="--ink-color:${ink}">
+            <span class="ink" aria-hidden="true"></span>
+            <div>
+                <div class="title">${esc(b.category_name)} ${state}</div>
+                <div class="sub">Aviso al ${pct(b.alert_threshold)}</div>
+            </div>
+            <div class="figure">${money(b.spent_amount)}<br><small>de ${money(b.limit_amount)}</small></div>
+            <div class="detail">
+                <span class="meter" role="img" aria-label="Gastado ${pct(used)}"><span style="width:${Math.min(100, used)}%"></span></span>
+                <span class="${rem < 0 ? 'amount-out' : ''}">${rem < 0 ? `Excedido por ${money(-rem)}` : `Quedan ${money(rem)}`} · ${pct(used)}</span>
+                <span class="actions"><button type="button" class="btn btn-outline-secondary btn-sm" data-edit="${b.id}">Editar</button></span>
             </div>
         </div>`;
     }).join('');
 }
 
-function prepareBudgetModal() {
-    document.getElementById('budgetForm').reset();
+document.getElementById('budgetsList').addEventListener('click', (e) => {
+    const id = e.target.closest('[data-edit]')?.dataset.edit;
+    if (id) openBudgetModal(budgets.find(b => String(b.id) === id));
+});
+
+function openBudgetModal(budget = null) {
+    const form = document.getElementById('budgetForm');
+    form.reset();
+    document.getElementById('budgetModalAlert').className = 'alert d-none';
+    document.getElementById('budgetModalTitle').textContent = budget ? `Editar: ${budget.category_name}` : 'Nuevo presupuesto';
     document.getElementById('formBudgetMonth').value = document.getElementById('budgetMonthSelect').value;
     document.getElementById('formBudgetYear').value = document.getElementById('budgetYearSelect').value;
-    document.getElementById('budgetAlertThreshold').value = 80;
+    document.getElementById('budgetAlertThreshold').value = budget ? budget.alert_threshold : 80;
+    const cat = document.getElementById('budgetCategorySelect');
+    cat.disabled = Boolean(budget);
+    if (budget) {
+        cat.value = budget.category_id;
+        document.getElementById('budgetLimitAmount').value = budget.limit_amount;
+    }
+    const zone = document.getElementById('budgetDangerZone');
+    zone.hidden = !budget;
+    if (budget) {
+        setupDangerZone(zone, async () => {
+            const res = await authFetch(`/api/v1/budgets/${budget.id}`, { method: 'DELETE' });
+            if (!res.ok) {
+                const box = document.getElementById('budgetModalAlert');
+                box.className = 'alert alert-danger';
+                box.textContent = 'No se pudo eliminar el presupuesto.';
+                return;
+            }
+            bootstrap.Modal.getInstance(document.getElementById('budgetModal')).hide();
+            loadBudgets();
+            loadFinancialAlerts();
+        });
+    }
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('budgetModal')).show();
 }
 
-// Guardar Presupuesto
 document.getElementById('budgetForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const alertBox = document.getElementById('budgetModalAlert');
-    const submitBtn = document.getElementById('budgetSubmitBtn');
-    const spinner = document.getElementById('budgetSpinner');
-
-    alertBox.className = 'alert d-none';
-    submitBtn.disabled = true;
-    spinner.classList.remove('d-none');
-
-    const payload = {
-        category_id: parseInt(document.getElementById('budgetCategorySelect').value),
-        month: parseInt(document.getElementById('formBudgetMonth').value),
-        year: parseInt(document.getElementById('formBudgetYear').value),
-        limit_amount: parseFloat(document.getElementById('budgetLimitAmount').value),
-        currency: 'USD',
-        alert_threshold: parseInt(document.getElementById('budgetAlertThreshold').value) || 80
-    };
-
+    const box = document.getElementById('budgetModalAlert');
+    const btn = document.getElementById('budgetSubmit');
+    box.className = 'alert d-none';
+    btn.disabled = true;
     try {
         const res = await authFetch('/api/v1/budgets', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+                category_id: parseInt(document.getElementById('budgetCategorySelect').value, 10),
+                month: parseInt(document.getElementById('formBudgetMonth').value, 10),
+                year: parseInt(document.getElementById('formBudgetYear').value, 10),
+                limit_amount: parseFloat(document.getElementById('budgetLimitAmount').value),
+                currency: 'USD',
+                alert_threshold: parseInt(document.getElementById('budgetAlertThreshold').value, 10) || 80,
+            }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Error al guardar presupuesto');
-
-        bootstrap.Modal.getInstance(document.getElementById('createBudgetModal')).hide();
+        if (!res.ok) throw new Error(apiError(data, 'No se pudo guardar el presupuesto.'));
+        bootstrap.Modal.getInstance(document.getElementById('budgetModal')).hide();
         loadBudgets();
         loadFinancialAlerts();
     } catch (err) {
-        alertBox.className = 'alert alert-danger d-block';
-        alertBox.textContent = err.message;
+        box.className = 'alert alert-danger';
+        box.textContent = err.message;
     } finally {
-        submitBtn.disabled = false;
-        spinner.classList.add('d-none');
+        btn.disabled = false;
     }
 });
 
-// Eliminar Presupuesto
-async function deleteBudget(budgetId, catName) {
-    if (!confirm(`¿Estás seguro de que deseas eliminar el presupuesto de "${catName}"?`)) return;
+async function downloadCsvReport() {
+    const params = new URLSearchParams();
+    const s = document.getElementById('exportStartDate').value;
+    const e = document.getElementById('exportEndDate').value;
+    const t = document.getElementById('exportTxType').value;
+    if (s) params.set('start_date', s);
+    if (e) params.set('end_date', e);
+    if (t) params.set('transaction_type', t);
     try {
-        const res = await authFetch(`/api/v1/budgets/${budgetId}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error('Error al eliminar');
-        loadBudgets();
-        loadFinancialAlerts();
+        const res = await authFetch(`/api/v1/budgets/export/csv?${params}`);
+        if (!res.ok) throw new Error('No se pudo generar el reporte.');
+        const url = URL.createObjectURL(await res.blob());
+        const a = Object.assign(document.createElement('a'), { href: url, download: `movimientos_${new Date().toISOString().slice(0, 10)}.csv` });
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
     } catch (err) {
-        alert(err.message);
+        showAlert('danger', err.message);
     }
 }
 
-// Descargar Reporte CSV
-function downloadCsvReport() {
-    const sDate = document.getElementById('exportStartDate').value;
-    const eDate = document.getElementById('exportEndDate').value;
-    const txType = document.getElementById('exportTxType').value;
-
-    let url = '/api/v1/budgets/export/csv?';
-    if (sDate) url += `start_date=${sDate}&`;
-    if (eDate) url += `end_date=${eDate}&`;
-    if (txType) url += `transaction_type=${txType}&`;
-
-    // Realizar descarga con token en cabecera
-    authFetch(url)
-        .then(res => {
-            if (!res.ok) throw new Error('Error generando reporte');
-            return res.blob();
-        })
-        .then(blob => {
-            const downloadUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = `reporte_financiero_${new Date().toISOString().split('T')[0]}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-        })
-        .catch(err => alert(err.message));
-}
-
 document.addEventListener('DOMContentLoaded', async () => {
-    initDateSelectors();
+    initPeriod();
     await loadCategories();
     loadFinancialAlerts();
     loadBudgets();

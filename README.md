@@ -4,7 +4,6 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?logo=fastapi)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%2B-336791?logo=postgresql)
 ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0%2B-red)
-![Chart.js](https://img.shields.io/badge/Chart.js-4.4-FF6384?logo=chartdotjs)
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-7952B3?logo=bootstrap)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker)
 
@@ -46,14 +45,16 @@
 * **Reversión Automática**: Al editar o eliminar cualquier movimiento, los saldos vuelven exactamente a su estado anterior.
 * Catálogo de categorías predeterminadas y soporte para categorías personalizadas con iconos de Bootstrap y paleta de colores.
 
-### 5. 📊 Dashboard Principal con Gráficos Chart.js
-* Métricas financieras consolidadas: **Patrimonio Neto, Dinero Disponible, Deuda Total y Tasa de Ahorro**.
-* 4 Gráficos interactivos en tiempo real con **Chart.js**:
-  1. *Gastos por Categoría (Doughnut Chart)*.
-  2. *Comparativa Mensual Ingresos vs Gastos (Bar Chart de 6 meses)*.
-  3. *Distribución de Fondos por Banco (Pie Chart)*.
-  4. *Deuda vs Límite de Tarjetas de Crédito (Bar Chart)*.
-* Panel de vencimientos próximos y tabla de últimos movimientos.
+### 5. 📊 Resumen (Dashboard)
+* Patrimonio neto, dinero disponible, deuda de tarjetas y balance del mes.
+* **Roseta de fondos**: un anillo por cuenta con el color de su banco, proporcional a su saldo.
+* Ingresos y gastos de los últimos 6 meses y gastos del mes por categoría, en barras a una misma escala.
+* Tarjetas de crédito con uso del cupo y próximos pagos, pendientes del iPhone y últimos movimientos.
+
+### 📱 iPhone: Apple Pay, DeUna y banca móvil
+* Webhook personal (`/api/v1/webhooks/ios`) para Atajos de iOS; la dirección y las instrucciones están en **Pendientes ➝ Conecta tu iPhone**.
+* Los pagos llegan a la **Bandeja de Pendientes**: se confirman con un toque y la app aprende la categoría y la tarjeta de cada comercio; los comercios conocidos se registran solos.
+* Detección de duplicados y lectura de notificaciones de DeUna y bancos (monto, comercio, ingreso o gasto).
 
 ### 6. 🥧 Presupuestos, Alertas y Reportes
 * Fijación de límites de gasto mensual por categoría.
@@ -118,9 +119,10 @@ FinancialApp/
 │   └── main.py               # Punto de entrada de FastAPI y rutas web
 ├── frontend/
 │   ├── static/               # CSS, JS y recursos estáticos
-│   └── templates/            # Plantillas HTML con Jinja2 y Bootstrap 5
+│   └── templates/            # Plantillas Jinja2 (app.html = shell común de la app)
 │       ├── base.html
-│       ├── index.html
+│       ├── app.html
+│       ├── pending.html
 │       ├── login.html
 │       ├── register.html
 │       ├── accounts.html
@@ -164,7 +166,8 @@ cp .env.example .env
 Configura tu cadena de conexión a PostgreSQL en `.env`:
 ```env
 DATABASE_URL=postgresql+psycopg2://postgres:postgres@localhost:5432/financial_db
-SECRET_KEY=clave_secreta_super_segura_de_produccion_123456789
+SECRET_KEY=<genera una con: python -c "import secrets; print(secrets.token_urlsafe(48))">
+ENABLE_DOCS=True   # Swagger en /docs, solo en desarrollo
 ```
 
 #### 4. Iniciar la base de datos PostgreSQL (con Docker)
@@ -200,8 +203,9 @@ Una vez iniciada la aplicación, accede desde tu navegador:
 
 | Módulo | URL Local | Descripción |
 | :--- | :--- | :--- |
-| **Inicio** | `http://127.0.0.1:8000/` | Portada y accesos rápidos |
-| **Dashboard** | `http://127.0.0.1:8000/dashboard` | Gráficos Chart.js, patrimonio y KPIs |
+| **Inicio** | `http://127.0.0.1:8000/` | Redirige al Resumen (o al login si no hay sesión) |
+| **Resumen** | `http://127.0.0.1:8000/dashboard` | Patrimonio, roseta de fondos, meses y pendientes |
+| **Pendientes** | `http://127.0.0.1:8000/pending` | Pagos del iPhone por confirmar y conexión con Atajos |
 | **Cuentas** | `http://127.0.0.1:8000/accounts` | Cuentas bancarias de Ecuador y efectivo |
 | **Tarjetas** | `http://127.0.0.1:8000/cards` | Tarjetas plásticas, límites y fechas de corte/pago |
 | **Movimientos** | `http://127.0.0.1:8000/transactions` | Ingresos, gastos, transferencias y pagos |
@@ -213,6 +217,12 @@ Una vez iniciada la aplicación, accede desde tu navegador:
 ---
 
 ## 🛡️ Seguridad y Buenas Prácticas
+
+**Variables de producción (Render):** `APP_ENV=production`, una `SECRET_KEY` aleatoria de 32+ caracteres (si es débil, la app no arranca), `TRUST_PROXY=true` y `ENABLE_DOCS=False`. `ALLOWED_ORIGINS` queda vacío: la app y la API comparten dominio.
+
+* Cambiar la contraseña exige la contraseña actual.
+* Tras 5 contraseñas incorrectas, la cuenta queda bloqueada 15 minutos; además hay límite de intentos por IP.
+* El token de los Atajos viaja solo en la cabecera `X-Webhook-Token`, nunca en la URL.
 
 1. **Sin Almacenamiento de Credenciales Sensibles**:
    * Nunca se guardan números de tarjeta completos (solo últimos 4 dígitos) ni códigos CVV.
@@ -226,4 +236,4 @@ Una vez iniciada la aplicación, accede desde tu navegador:
 
 ---
 
-**FinancialApp** &copy; 2026 &bull; Desarrollado con FastAPI, PostgreSQL y Chart.js.
+**FinancialApp** &copy; 2026 &bull; Desarrollado con FastAPI y PostgreSQL.

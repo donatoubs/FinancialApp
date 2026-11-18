@@ -1,170 +1,113 @@
-{% extends "base.html" %}
+{% extends "app.html" %}
 
-{% block title %}Movimientos Financieros - FinancialApp{% endblock %}
+{% block title %}Movimientos · FinancialApp{% endblock %}
+
+{% block extra_head %}
+<style>
+.tx-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 10px; margin-bottom: 14px; align-items: end; }
+.tx-filters .wide { grid-column: 1 / -1; }
+.tx-filters .form-label { margin-bottom: 4px; }
+@media (min-width: 992px) { .tx-filters { grid-template-columns: 1fr 1fr 160px 160px auto; } .tx-filters .wide { grid-column: auto; } }
+@media (max-width: 991.98px) { .tx-new { display: none; } }
+.tx-list tbody tr { cursor: pointer; }
+.tx-list td { padding-top: 12px; padding-bottom: 12px; }
+.tx-list .col-wide { display: none; }
+@media (min-width: 992px) { .tx-list .col-wide { display: table-cell; } .tx-list .col-narrow { display: none; } }
+.tx-detail { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0; font-size: 0.9375rem; }
+.tx-detail dt { color: var(--ink-muted); font-weight: 600; font-size: 0.8125rem; }
+.tx-detail dd { margin: 0; overflow-wrap: anywhere; }
+</style>
+{% endblock %}
 
 {% block content %}
-<!-- Navbar Superior -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm py-3">
-    <div class="container">
-        <a class="navbar-brand fw-bold d-flex align-items-center" href="/">
-            <img src="/static/img/logo.png" alt="Logo" height="34" class="me-2 rounded-2">
-            FinancialApp
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
+
+<div class="page-head">
+    <div>
+        <h1>Movimientos</h1>
+        <p>Ingresos, gastos, transferencias y pagos de tarjeta.</p>
+    </div>
+    <div class="page-actions">
+        <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#categoriesModal" onclick="loadCategoriesList()">Categorías</button>
+        <button class="btn btn-primary tx-new" data-bs-toggle="modal" data-bs-target="#createTxModal" onclick="prepareCreateModal()">
+            <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Nuevo movimiento
         </button>
-        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
-                <li class="nav-item">
-                    <a class="nav-link" href="/"><i class="bi bi-house me-1"></i> Inicio</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/dashboard"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/accounts"><i class="bi bi-bank me-1"></i> Cuentas</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/cards"><i class="bi bi-credit-card me-1"></i> Tarjetas</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active fw-semibold" href="/transactions"><i class="bi bi-arrow-left-right me-1"></i> Movimientos</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/budgets"><i class="bi bi-pie-chart me-1"></i> Presupuestos</a>
-                </li>
-            </ul>
-            <div class="d-flex align-items-center gap-3">
-                <span class="text-light small">
-                    <i class="bi bi-person-circle text-primary me-1"></i>
-                    <strong id="navUserName">Usuario</strong> (<span id="navUserCurrency" class="badge bg-secondary">USD</span>)
-                </span>
-                <button id="logoutBtn" class="btn btn-outline-danger btn-sm px-3 rounded-3">
-                    <i class="bi bi-box-arrow-right me-1"></i> Salir
-                </button>
+    </div>
+</div>
+
+<div id="globalAlert" class="alert d-none" role="alert"></div>
+
+<dl class="ledger">
+    <div><dt>Ingresos</dt><dd class="amount-in" id="sumIncome">—</dd></div>
+    <div><dt>Gastos</dt><dd class="amount-out" id="sumExpense">—</dd></div>
+    <div><dt>Balance</dt><dd id="sumNet">—</dd></div>
+</dl>
+
+<div class="tx-filters">
+    <div class="wide">
+    <label class="form-label" for="filterTxType">Tipo</label>
+    <select class="form-select form-select-sm" id="filterTxType" onchange="loadTransactions()">
+        <option value="">Todos los tipos</option>
+        <option value="income">Ingresos</option>
+        <option value="expense">Gastos</option>
+        <option value="transfer">Transferencias</option>
+        <option value="card_payment">Pagos de tarjeta</option>
+    </select>
+    </div>
+    <div class="wide">
+    <label class="form-label" for="filterCategory">Categoría</label>
+    <select class="form-select form-select-sm" id="filterCategory" onchange="loadTransactions()">
+        <option value="">Todas</option>
+    </select>
+    </div>
+    <div>
+    <label class="form-label" for="filterStartDate">Desde</label>
+    <input type="date" class="form-control form-control-sm" id="filterStartDate" onchange="loadTransactions()">
+    </div>
+    <div>
+    <label class="form-label" for="filterEndDate">Hasta</label>
+    <input type="date" class="form-control form-control-sm" id="filterEndDate" onchange="loadTransactions()">
+    </div>
+    <button class="btn btn-outline-secondary btn-sm wide" onclick="clearFilters()">Limpiar filtros</button>
+</div>
+
+<div class="rows">
+    <table class="table table-hover tx-list mb-0">
+        <thead>
+            <tr>
+                <th class="ps-3">Detalle</th>
+                <th class="col-wide">Fecha</th>
+                <th class="col-wide">Cuenta o tarjeta</th>
+                <th class="text-end pe-3">Monto</th>
+            </tr>
+        </thead>
+        <tbody id="transactionsTableBody"><tr><td colspan="4" class="empty">Cargando…</td></tr></tbody>
+    </table>
+</div>
+
+<!-- Detalle de un movimiento (incluye eliminar) -->
+<div class="modal fade" id="txDetailModal" tabindex="-1" aria-labelledby="txDetailTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="txDetailTitle">Movimiento</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
-        </div>
-    </div>
-</nav>
-
-<div class="container py-5">
-    <!-- Encabezado y Acciones -->
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
-        <div>
-            <h2 class="fw-bold mb-1"><i class="bi bi-arrow-left-right text-primary me-2"></i>Movimientos Financieros</h2>
-            <p class="text-muted mb-0">Registra ingresos, gastos, transferencias y pagos con sincronización automática de saldos.</p>
-        </div>
-        <div class="d-flex gap-2">
-            <button class="btn btn-outline-secondary px-3 py-2 rounded-3 fw-semibold" data-bs-toggle="modal" data-bs-target="#categoriesModal" onclick="loadCategoriesList()">
-                <i class="bi bi-tags me-1"></i> Categorías
-            </button>
-            <button class="btn btn-primary px-4 py-2 rounded-3 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#createTxModal" onclick="prepareCreateModal()">
-                <i class="bi bi-plus-circle me-1"></i> Nuevo Movimiento
-            </button>
-        </div>
-    </div>
-
-    <!-- Alertas globales -->
-    <div id="globalAlert" class="alert d-none" role="alert"></div>
-
-    <!-- Resumen KPI de Movimientos -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm rounded-4 bg-white p-3 h-100">
-                <div class="d-flex align-items-center">
-                    <div class="p-3 bg-success-subtle text-success rounded-4 me-3">
-                        <i class="bi bi-arrow-down-left-circle fs-3"></i>
+            <div class="modal-body">
+                <div id="txDetailAlert" class="alert d-none" role="alert"></div>
+                <p class="figure mb-3" id="txDetailAmount" style="font-size: 2.25rem"></p>
+                <dl class="tx-detail" id="txDetailList"></dl>
+                <div class="danger-zone" id="txDangerZone">
+                    <div class="ask">
+                        <p>Al eliminarlo, los saldos de la cuenta o tarjeta vuelven a como estaban.</p>
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-danger="ask">Eliminar movimiento…</button>
                     </div>
-                    <div>
-                        <span class="text-muted small fw-semibold">Ingresos Totales</span>
-                        <h4 class="fw-bold text-success mb-0" id="kpiTotalIncome">$0.00</h4>
+                    <div class="confirm">
+                        <span class="small fw-semibold">¿Eliminar este movimiento?</span>
+                        <button type="button" class="btn btn-danger btn-sm" data-danger="confirm">Sí, eliminar</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-danger="cancel">Cancelar</button>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm rounded-4 bg-white p-3 h-100">
-                <div class="d-flex align-items-center">
-                    <div class="p-3 bg-danger-subtle text-danger rounded-4 me-3">
-                        <i class="bi bi-arrow-up-right-circle fs-3"></i>
-                    </div>
-                    <div>
-                        <span class="text-muted small fw-semibold">Gastos Totales</span>
-                        <h4 class="fw-bold text-danger mb-0" id="kpiTotalExpense">$0.00</h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm rounded-4 bg-white p-3 h-100">
-                <div class="d-flex align-items-center">
-                    <div class="p-3 bg-primary-subtle text-primary rounded-4 me-3">
-                        <i class="bi bi-wallet2 fs-3"></i>
-                    </div>
-                    <div>
-                        <span class="text-muted small fw-semibold">Balance Neto del Periodo</span>
-                        <h4 class="fw-bold text-primary mb-0" id="kpiNetBalance">$0.00</h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Filtros de Búsqueda -->
-    <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-4">
-        <div class="row g-2 align-items-center">
-            <div class="col-md-3">
-                <select class="form-select form-select-sm" id="filterTxType" onchange="loadTransactions()">
-                    <option value="">Todos los tipos</option>
-                    <option value="income">Ingresos (+)</option>
-                    <option value="expense">Gastos (-)</option>
-                    <option value="transfer">Transferencias (↔)</option>
-                    <option value="card_payment">Pagos a Tarjeta (💳)</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <select class="form-select form-select-sm" id="filterCategory" onchange="loadTransactions()">
-                    <option value="">Todas las categorías</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <input type="date" class="form-control form-control-sm" id="filterStartDate" onchange="loadTransactions()" title="Fecha Desde">
-            </div>
-            <div class="col-md-2">
-                <input type="date" class="form-control form-control-sm" id="filterEndDate" onchange="loadTransactions()" title="Fecha Hasta">
-            </div>
-            <div class="col-md-2 text-end">
-                <button class="btn btn-outline-secondary btn-sm w-100 rounded-3" onclick="clearFilters()">
-                    <i class="bi bi-x-circle me-1"></i> Limpiar
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Tabla de Transacciones -->
-    <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th class="ps-4 py-3">Tipo / Categoría</th>
-                        <th class="py-3">Descripción</th>
-                        <th class="py-3">Fecha</th>
-                        <th class="py-3">Cuenta / Tarjeta</th>
-                        <th class="py-3 text-end">Monto</th>
-                        <th class="pe-4 py-3 text-end">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="transactionsTableBody">
-                    <tr>
-                        <td colspan="6" class="text-center py-5">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Cargando...</span>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
         </div>
     </div>
 </div>
@@ -174,7 +117,7 @@
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 rounded-4 shadow">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle text-primary me-2"></i>Registrar Movimiento</h5>
+                <h2 class="modal-title">Nuevo movimiento</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="createTxForm">
@@ -239,7 +182,7 @@
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 rounded-4 shadow">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold"><i class="bi bi-tags text-primary me-2"></i>Categorías de Ingresos y Gastos</h5>
+                <h2 class="modal-title">Categorías</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body pt-3">
@@ -247,7 +190,7 @@
 
                 <!-- Formulario Agregar Categoría -->
                 <form id="createCategoryForm" class="p-3 bg-light rounded-3 border mb-4">
-                    <h6 class="fw-bold mb-3"><i class="bi bi-plus-circle text-primary me-1"></i>Crear Nueva Categoría Personalizada</h6>
+                    <h3 class="section-title mb-3">Nueva categoría</h3>
                     <div class="row g-2">
                         <div class="col-md-4">
                             <label class="form-label very-small fw-semibold">Nombre *</label>
@@ -288,7 +231,7 @@
                 </form>
 
                 <!-- Listado de Categorías -->
-                <h6 class="fw-bold mb-2">Categorías Registradas</h6>
+                <h3 class="section-title mb-2">Tus categorías</h3>
                 <div class="row g-2" id="categoriesGrid">
                     <div class="col-12 text-center py-3 text-muted small">Cargando categorías...</div>
                 </div>
@@ -307,36 +250,6 @@ let allTransactions = [];
 let allAccounts = [];
 let allCards = [];
 let allCategories = [];
-const token = localStorage.getItem('financial_token');
-const userJson = localStorage.getItem('financial_user');
-
-if (!token || !userJson) {
-    window.location.href = '/login';
-}
-
-const user = JSON.parse(userJson || '{}');
-document.getElementById('navUserName').textContent = user.full_name || 'Usuario';
-document.getElementById('navUserCurrency').textContent = user.currency_preference || 'USD';
-
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    localStorage.removeItem('financial_token');
-    localStorage.removeItem('financial_user');
-    window.location.href = '/login';
-});
-
-async function authFetch(url, options = {}) {
-    options.headers = {
-        ...options.headers,
-        'Authorization': `Bearer ${token}`
-    };
-    const res = await fetch(url, options);
-    if (res.status === 401) {
-        localStorage.clear();
-        window.location.href = '/login';
-        throw new Error('Sesión expirada');
-    }
-    return res;
-}
 
 // Cargar Datos Base (Cuentas, Tarjetas, Categorías)
 async function loadBaseData() {
@@ -391,17 +304,16 @@ async function loadTransactions() {
 
         if (summaryRes.ok) {
             const sum = await summaryRes.json();
-            document.getElementById('kpiTotalIncome').textContent = `+$${parseFloat(sum.total_income).toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
-            document.getElementById('kpiTotalExpense').textContent = `-$${parseFloat(sum.total_expense).toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
-            
-            const net = parseFloat(sum.net_balance);
-            const netElem = document.getElementById('kpiNetBalance');
-            netElem.textContent = `${net >= 0 ? '+' : ''}$${net.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
-            netElem.className = `fw-bold mb-0 ${net >= 0 ? 'text-primary' : 'text-danger'}`;
+            document.getElementById('sumIncome').textContent = money(sum.total_income, { sign: true });
+            document.getElementById('sumExpense').textContent = money(-Number(sum.total_expense), { sign: true });
+            const net = Number(sum.net_balance);
+            const netEl = document.getElementById('sumNet');
+            netEl.textContent = money(net, { sign: true });
+            netEl.className = net < 0 ? 'amount-out' : '';
         }
     } catch (err) {
         document.getElementById('transactionsTableBody').innerHTML = `
-            <tr><td colspan="6" class="text-center py-4 text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i> ${err.message}</td></tr>`;
+            <tr><td colspan="4" class="empty">${esc(err.message)}</td></tr>`;
     }
 }
 
@@ -413,85 +325,87 @@ function clearFilters() {
     loadTransactions();
 }
 
+const TX_KINDS = {
+    income: { label: 'Ingreso', cls: 'amount-in', sign: 1 },
+    expense: { label: 'Gasto', cls: 'amount-out', sign: -1 },
+    transfer: { label: 'Transferencia', cls: '', sign: 0 },
+    card_payment: { label: 'Pago de tarjeta', cls: '', sign: 0 },
+};
+
+function txAccount(t) {
+    if (t.transaction_type === 'transfer') return `${t.source_account_name || 'Origen'} → ${t.destination_account_name || 'Destino'}`;
+    if (t.transaction_type === 'card_payment') return `${t.source_account_name || 'Cuenta'} → ${t.card_name || 'Tarjeta'}`;
+    return t.card_name || t.source_account_name || 'Sin cuenta';
+}
+
+function txAmount(t) {
+    const k = TX_KINDS[t.transaction_type] || TX_KINDS.expense;
+    return k.sign ? money(Number(t.amount) * k.sign, { sign: true }) : money(t.amount);
+}
+
 function renderTransactionsTable(transactions) {
     const tbody = document.getElementById('transactionsTableBody');
-    if (!transactions || transactions.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" class="text-center py-5">
-                    <i class="bi bi-inbox fs-2 text-muted mb-2 d-block"></i>
-                    <h6 class="fw-bold">No hay movimientos registrados</h6>
-                    <p class="text-muted small mb-0">Haz clic en "Nuevo Movimiento" para registrar tu primer ingreso o gasto.</p>
-                </td>
-            </tr>`;
+    if (!transactions || !transactions.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty"><i class="bi bi-inbox" aria-hidden="true"></i>No hay movimientos con estos filtros.</td></tr>';
         return;
     }
-
     tbody.innerHTML = transactions.map(t => {
-        let badgeType = '';
-        let amountFormatted = '';
-        let accountDetail = '';
-
-        if (t.transaction_type === 'income') {
-            badgeType = `<span class="badge bg-success-subtle text-success rounded-pill"><i class="bi bi-arrow-down-left me-1"></i> Ingreso</span>`;
-            amountFormatted = `<span class="fw-bold text-success fs-6">+ $${parseFloat(t.amount).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>`;
-            accountDetail = `<span class="text-muted small"><i class="bi bi-bank me-1"></i> ${t.source_account_name || 'Cuenta'}</span>`;
-        } else if (t.transaction_type === 'expense') {
-            badgeType = `<span class="badge bg-danger-subtle text-danger rounded-pill"><i class="bi bi-arrow-up-right me-1"></i> Gasto</span>`;
-            amountFormatted = `<span class="fw-bold text-danger fs-6">- $${parseFloat(t.amount).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>`;
-            if (t.card_name) {
-                accountDetail = `<span class="text-muted small"><i class="bi bi-credit-card me-1"></i> ${t.card_name}</span>`;
-            } else {
-                accountDetail = `<span class="text-muted small"><i class="bi bi-bank me-1"></i> ${t.source_account_name || 'Efectivo / Cuenta'}</span>`;
-            }
-        } else if (t.transaction_type === 'transfer') {
-            badgeType = `<span class="badge bg-primary-subtle text-primary rounded-pill"><i class="bi bi-arrow-left-right me-1"></i> Transferencia</span>`;
-            amountFormatted = `<span class="fw-bold text-primary fs-6">↔ $${parseFloat(t.amount).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>`;
-            accountDetail = `<span class="text-muted small">${t.source_account_name || 'Origen'} <i class="bi bi-arrow-right text-primary"></i> ${t.destination_account_name || 'Destino'}</span>`;
-        } else if (t.transaction_type === 'card_payment') {
-            badgeType = `<span class="badge bg-warning-subtle text-dark rounded-pill"><i class="bi bi-credit-card me-1"></i> Pago Tarjeta</span>`;
-            amountFormatted = `<span class="fw-bold text-dark fs-6">💳 $${parseFloat(t.amount).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span>`;
-            accountDetail = `<span class="text-muted small">${t.source_account_name || 'Cuenta'} <i class="bi bi-arrow-right text-warning"></i> ${t.card_name || 'Tarjeta'}</span>`;
-        }
-
-        const catIcon = t.category_icon || 'bi-tag';
-        const catColor = t.category_color || '#2563eb';
-        const catName = t.category_name || 'Sin Categoría';
-
+        const k = TX_KINDS[t.transaction_type] || TX_KINDS.expense;
         return `
-        <tr>
-            <td class="ps-4">
-                <div class="d-flex align-items-center">
-                    <div class="p-2 rounded-3 me-2" style="background-color: ${catColor}15; color: ${catColor};">
-                        <i class="bi ${catIcon} fs-5"></i>
-                    </div>
-                    <div>
-                        <div class="fw-semibold text-dark">${catName}</div>
-                        ${badgeType}
+        <tr data-tx="${t.id}" tabindex="0" role="button" aria-label="Ver ${esc(t.description)}">
+            <td class="ps-3">
+                <div class="d-flex align-items-start gap-2">
+                    <span class="ink-dot mt-1" style="background:${esc(t.category_color || '#7D8892')}"></span>
+                    <div class="min-w-0">
+                        <div class="fw-semibold text-break">${esc(t.description)}</div>
+                        <div class="text-muted small">${esc(t.category_name || k.label)}<span class="col-narrow"> · ${fmtDate(t.transaction_date)} · ${esc(txAccount(t))}</span></div>
                     </div>
                 </div>
             </td>
-            <td>
-                <div class="fw-semibold text-dark">${t.description}</div>
-                ${t.notes ? `<div class="text-muted very-small" style="font-size: 0.75rem;">${t.notes}</div>` : ''}
-            </td>
-            <td>
-                <span class="text-secondary small">${t.transaction_date}</span>
-            </td>
-            <td>
-                ${accountDetail}
-            </td>
-            <td class="text-end">
-                ${amountFormatted}
-            </td>
-            <td class="pe-4 text-end">
-                <button class="btn btn-outline-danger btn-sm rounded-3 px-2" onclick="deleteTransaction(${t.id}, '${t.description}')" title="Eliminar Movimiento">
-                    <i class="bi bi-trash3"></i>
-                </button>
-            </td>
+            <td class="col-wide text-muted small num text-nowrap">${fmtDate(t.transaction_date)}</td>
+            <td class="col-wide text-muted small">${esc(txAccount(t))}</td>
+            <td class="text-end pe-3 fw-bold num text-nowrap ${k.cls}">${txAmount(t)}</td>
         </tr>`;
     }).join('');
 }
+
+function openTxDetail(id) {
+    const t = allTransactions.find(x => String(x.id) === String(id));
+    if (!t) return;
+    const k = TX_KINDS[t.transaction_type] || TX_KINDS.expense;
+    document.getElementById('txDetailTitle').textContent = t.description;
+    const amountEl = document.getElementById('txDetailAmount');
+    amountEl.textContent = txAmount(t);
+    amountEl.className = `figure mb-3 ${k.cls}`;
+    const rows = [['Tipo', k.label], ['Categoría', t.category_name || '—'], ['Fecha', fmtDate(t.transaction_date)], ['Cuenta o tarjeta', txAccount(t)]];
+    if (t.notes) rows.push(['Notas', t.notes]);
+    document.getElementById('txDetailList').innerHTML = rows.map(([x, y]) => `<dt>${x}</dt><dd>${esc(y)}</dd>`).join('');
+    document.getElementById('txDetailAlert').className = 'alert d-none';
+    setupDangerZone(document.getElementById('txDangerZone'), async () => {
+        const res = await authFetch(`/api/v1/transactions/${t.id}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const box = document.getElementById('txDetailAlert');
+            box.className = 'alert alert-danger';
+            box.textContent = apiError(await res.json().catch(() => null), 'No se pudo eliminar.');
+            return;
+        }
+        bootstrap.Modal.getInstance(document.getElementById('txDetailModal')).hide();
+        showAlert('secondary', 'Movimiento eliminado y saldos revertidos.');
+        await loadBaseData();
+        loadTransactions();
+    });
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('txDetailModal')).show();
+}
+
+document.getElementById('transactionsTableBody').addEventListener('click', (e) => {
+    const row = e.target.closest('[data-tx]');
+    if (row) openTxDetail(row.dataset.tx);
+});
+document.getElementById('transactionsTableBody').addEventListener('keydown', (e) => {
+    const row = e.target.closest('[data-tx]');
+    if (row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openTxDetail(row.dataset.tx); }
+});
+
 
 // Preparar Modal de Creación
 function prepareCreateModal() {
@@ -507,9 +421,9 @@ function updateModalFormLayout() {
     if (type === 'expense') {
         const catOptions = allCategories.filter(c => c.category_type === 'expense' || c.category_type === 'both')
             .map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-        const accOptions = allAccounts.map(a => `<option value="${a.id}">${a.name} (${a.bank_name} - Saldo: $${parseFloat(a.current_balance).toFixed(2)})</option>`).join('');
+        const accOptions = allAccounts.map(a => `<option value="${a.id}">${a.name} (${a.bank_name} - Saldo: ${money(a.current_balance)})</option>`).join('');
         const cardOptions = allCards.filter(c => c.card_type === 'credit')
-            .map(c => `<option value="${c.id}">${c.name} (${c.bank_name} - Disp: $${parseFloat(c.available_credit).toFixed(2)})</option>`).join('');
+            .map(c => `<option value="${c.id}">${c.name} (${c.bank_name} - Disp: ${money(c.available_credit)})</option>`).join('');
 
         container.innerHTML = `
             <div class="row g-3">
@@ -564,7 +478,7 @@ function updateModalFormLayout() {
                 </div>
             </div>`;
     } else if (type === 'transfer') {
-        const accOptionsSrc = allAccounts.map(a => `<option value="${a.id}">${a.name} (${a.bank_name} - Saldo: $${parseFloat(a.current_balance).toFixed(2)})</option>`).join('');
+        const accOptionsSrc = allAccounts.map(a => `<option value="${a.id}">${a.name} (${a.bank_name} - Saldo: ${money(a.current_balance)})</option>`).join('');
         const accOptionsDest = allAccounts.map(a => `<option value="${a.id}">${a.name} (${a.bank_name})</option>`).join('');
 
         container.innerHTML = `
@@ -583,9 +497,9 @@ function updateModalFormLayout() {
                 </div>
             </div>`;
     } else if (type === 'card_payment') {
-        const accOptions = allAccounts.map(a => `<option value="${a.id}">${a.name} (${a.bank_name} - Saldo: $${parseFloat(a.current_balance).toFixed(2)})</option>`).join('');
+        const accOptions = allAccounts.map(a => `<option value="${a.id}">${a.name} (${a.bank_name} - Saldo: ${money(a.current_balance)})</option>`).join('');
         const cardOptions = allCards.filter(c => c.card_type === 'credit')
-            .map(c => `<option value="${c.id}">${c.name} (${c.bank_name} - Deuda: $${parseFloat(c.current_balance).toFixed(2)})</option>`).join('');
+            .map(c => `<option value="${c.id}">${c.name} (${c.bank_name} - Deuda: ${money(c.current_balance)})</option>`).join('');
 
         container.innerHTML = `
             <div class="row g-3">
@@ -695,20 +609,6 @@ document.getElementById('createTxForm').addEventListener('submit', async (e) => 
 });
 
 // Eliminar Movimiento
-async function deleteTransaction(txId, desc) {
-    if (!confirm(`¿Estás seguro de que deseas eliminar el movimiento "${desc}"? Los saldos de tus cuentas o tarjetas serán revertidos automáticamente.`)) return;
-    try {
-        const res = await authFetch(`/api/v1/transactions/${txId}`, { method: 'DELETE' });
-        if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.detail || 'Error al eliminar');
-        }
-        await loadBaseData();
-        loadTransactions();
-    } catch (err) {
-        alert(err.message);
-    }
-}
 
 // Cargar Categorías en Modal
 async function loadCategoriesList() {
@@ -791,6 +691,12 @@ async function deleteCategory(catId) {
 document.addEventListener('DOMContentLoaded', async () => {
     await loadBaseData();
     loadTransactions();
+    // Acceso directo desde el Resumen: /transactions?nuevo=1 abre el formulario
+    if (new URLSearchParams(location.search).has('nuevo')) {
+        prepareCreateModal();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('createTxModal')).show();
+        history.replaceState(null, '', '/transactions');
+    }
 });
 </script>
 {% endblock %}

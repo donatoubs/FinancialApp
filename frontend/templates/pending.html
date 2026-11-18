@@ -1,0 +1,334 @@
+{% extends "app.html" %}
+
+{% block title %}Pendientes · FinancialApp{% endblock %}
+
+{% block extra_head %}
+<style>
+.pending-layout { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1200px) { .pending-layout { grid-template-columns: minmax(0, 1fr) 340px; align-items: start; } }
+.pending-card { padding: 18px; margin-bottom: 12px; scroll-margin-top: 80px; }
+@media (min-width: 768px) { .pending-card { padding: 22px 24px; } }
+.pending-card.is-new { background: var(--panel) !important; box-shadow: inset 0 0 0 2px var(--safety); }
+.pending-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.pending-merchant { font-size: 1.125rem; font-weight: 700; margin: 6px 0 0; overflow-wrap: anywhere; }
+.pending-amount { font-size: 1.75rem; white-space: nowrap; }
+.source { display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 600; color: var(--ink-muted); }
+.source .new { background: var(--safety); color: var(--carbon-950); border-radius: 999px; padding: 1px 8px; }
+.learned { display: block; font-size: 0.8125rem; color: var(--income); margin-top: 2px; }
+.raw-text { font-size: 0.8125rem; color: var(--ink-muted); border-left: 1px solid var(--rule-strong); padding: 2px 0 2px 10px; margin-bottom: 14px; overflow-wrap: anywhere; }
+.pending-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 4px; }
+.remember { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 0.8125rem; }
+.remember input[type="text"] { max-width: 220px; }
+.side h2 { font-size: 1rem; font-weight: 700; margin: 0 0 6px; }
+.side p, .side li { font-size: 0.8125rem; color: var(--ink-muted); }
+.side ol { padding-left: 18px; margin: 0; display: grid; gap: 6px; }
+.side code { color: var(--carbon-800); background: var(--storm-200); padding: 0 4px; border-radius: 4px; font-size: 0.8125rem; }
+.url-field { font-size: 0.8125rem !important; font-variant-numeric: tabular-nums; }
+.rule-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 0.8125rem; }
+.rule-item .meta { color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Pendientes</h1>
+        <p>Pagos que llegaron desde tu iPhone. Revisa la categoría y la cuenta, y confirma.</p>
+    </div>
+</div>
+
+<div id="globalAlert" class="alert d-none" role="alert"></div>
+
+<div class="pending-layout">
+    <section aria-label="Pagos por confirmar">
+        <div id="pendingList"><div class="panel empty">Cargando…</div></div>
+    </section>
+
+    <aside class="side d-grid gap-3">
+        <section class="panel">
+            <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" role="switch" id="autoConfirmSwitch">
+                <label class="form-check-label" for="autoConfirmSwitch">
+                    <span class="fw-semibold d-block">Registrar automáticamente los comercios conocidos</span>
+                    <span class="small text-muted">Si confirmaste un comercio con "Recordar", sus próximos pagos se registran con la misma categoría y tarjeta.</span>
+                </label>
+            </div>
+        </section>
+
+        <section class="panel" aria-labelledby="connectTitle">
+            <h2 id="connectTitle">Conecta tu iPhone</h2>
+            <p>En la acción <b>Obtener contenido de URL</b> de Atajos usa método POST, cuerpo JSON, esta dirección y una cabecera <code>X-Webhook-Token</code> con tu token.</p>
+            <label class="form-label" for="webhookUrl">Dirección</label>
+            <div class="input-group input-group-sm mb-2">
+                <input type="text" class="form-control url-field" id="webhookUrl" readonly value="">
+                <button class="btn btn-outline-secondary" type="button" data-copy="webhookUrl">Copiar</button>
+            </div>
+            <label class="form-label" for="webhookToken">Token <span class="text-muted fw-normal">(personal, no lo compartas)</span></label>
+            <div class="input-group input-group-sm mb-2">
+                <input type="password" class="form-control url-field" id="webhookToken" readonly value="">
+                <button class="btn btn-outline-secondary" type="button" id="toggleWebhookToken" aria-label="Mostrar token"><i class="bi bi-eye"></i></button>
+                <button class="btn btn-outline-secondary" type="button" data-copy="webhookToken">Copiar</button>
+            </div>
+            <details class="mb-2">
+                <summary class="small fw-semibold">Apple Pay</summary>
+                <ol class="mt-2">
+                    <li>Atajos ➝ Automatización ➝ <b>+</b> ➝ <b>Transacción</b>. Elige tus tarjetas y marca <b>Ejecutar inmediatamente</b>.</li>
+                    <li>Agrega <b>Obtener contenido de URL</b> con la dirección, método POST, cuerpo JSON y en <b>Encabezados</b>: <code>X-Webhook-Token</code> = tu token.</li>
+                    <li>Campos: <code>amount</code> = Monto, <code>merchant</code> = Comercio, <code>card</code> = Tarjeta.</li>
+                    <li>Opcional: antes, <b>Elegir del menú</b> con tus categorías y envía <code>category</code> y <code>auto_register</code> = verdadero para registrar al instante.</li>
+                </ol>
+            </details>
+            <details class="mb-2">
+                <summary class="small fw-semibold">DeUna y banca móvil</summary>
+                <p class="mt-2 mb-1">iOS no deja leer notificaciones de otras apps. Opciones:</p>
+                <ol>
+                    <li><b>Al cerrar DeUna</b>: Automatización ➝ <b>App</b> ➝ DeUna ➝ <i>Se cierra</i>. Pide monto y a quién pagaste; envía <code>amount</code>, <code>merchant</code> y <code>source</code> = <code>deuna</code>.</li>
+                    <li><b>Comprobante</b>: comparte la captura con un atajo que use <b>Extraer texto de imagen</b> y envíe el texto como <code>raw_text</code>.</li>
+                    <li><b>SMS o correo del banco</b>: envía el texto del aviso como <code>raw_text</code>.</li>
+                </ol>
+            </details>
+            <button type="button" class="btn btn-link btn-sm p-0 text-danger" id="regenerateWebhook">Generar un token nuevo</button>
+        </section>
+
+        <section class="panel" aria-labelledby="rulesTitle">
+            <h2 id="rulesTitle">Comercios aprendidos</h2>
+            <p class="mb-2">Si uno se registra con la categoría o tarjeta equivocada, olvídalo y vuelve a confirmarlo.</p>
+            <div id="rulesList"></div>
+        </section>
+    </aside>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const SEEN_KEY = 'financial_seen_pending';
+const SOURCES = { apple_pay: 'Apple Pay', deuna: 'DeUna', bank: 'Banco', sms: 'SMS' };
+let accounts = [], cards = [], categories = [], pendingById = {};
+
+async function loadReferenceData() {
+    const [a, c, k] = await Promise.all([
+        authFetch('/api/v1/accounts?only_active=true'),
+        authFetch('/api/v1/cards?only_active=true'),
+        authFetch('/api/v1/categories'),
+    ]);
+    accounts = a.ok ? await a.json() : [];
+    cards = c.ok ? await c.json() : [];
+    categories = k.ok ? await k.json() : [];
+}
+
+function categoryOptions(type, selectedId) {
+    return '<option value="">Elige una categoría…</option>' + categories
+        .filter(c => c.category_type === type || c.category_type === 'both')
+        .map(c => `<option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
+}
+
+function mediumOptions(type, p) {
+    const selected = p.suggested_card_id ? `card:${p.suggested_card_id}` : (p.suggested_account_id ? `acc:${p.suggested_account_id}` : '');
+    const acc = accounts.map(a => `<option value="acc:${a.id}" ${selected === `acc:${a.id}` ? 'selected' : ''}>${esc(a.name)} · ${esc(a.bank_name)}</option>`).join('');
+    const crd = type === 'income' ? '' : cards.map(c => `<option value="card:${c.id}" ${selected === `card:${c.id}` ? 'selected' : ''}>${esc(c.name)} · ${c.card_type === 'credit' ? 'crédito' : 'débito'} ${esc(c.last_four_digits)}</option>`).join('');
+    return '<option value="">¿Con qué pagaste?</option>'
+        + (acc ? `<optgroup label="Cuentas">${acc}</optgroup>` : '')
+        + (crd ? `<optgroup label="Tarjetas">${crd}</optgroup>` : '');
+}
+
+function renderPending(items) {
+    const list = document.getElementById('pendingList');
+    const seen = new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'));
+    pendingById = Object.fromEntries(items.map(p => [p.id, p]));
+
+    if (!items.length) {
+        list.innerHTML = `<div class="panel empty"><i class="bi bi-check2-circle" aria-hidden="true"></i>
+            <strong class="d-block text-dark">Nada por confirmar</strong>
+            Los pagos que hagas con Apple Pay o DeUna aparecerán aquí.</div>`;
+        return;
+    }
+
+    const noMedium = !accounts.length && !cards.length;
+    list.innerHTML = (noMedium ? `<div class="alert alert-warning">Para confirmar necesitas al menos una <a class="alert-link" href="/accounts">cuenta</a> o <a class="alert-link" href="/cards">tarjeta</a>.</div>` : '')
+        + items.map(p => {
+        const type = p.transaction_type === 'income' ? 'income' : 'expense';
+        const isNew = !seen.has(p.id);
+        const amount = p.amount !== null
+            ? `<span class="figure pending-amount ${type === 'income' ? 'amount-in' : ''}">${money(Number(p.amount) * (type === 'income' ? 1 : -1), { sign: true })}</span>`
+            : `<span class="badge bg-warning-subtle">Monto sin leer</span>`;
+        return `
+        <article class="panel pending-card${isNew ? ' is-new' : ''}" id="pending-${p.id}" aria-label="${esc(p.merchant)}">
+            <div class="pending-top">
+                <div class="min-w-0">
+                    <span class="source">${isNew ? '<span class="new">Nuevo</span>' : ''}${esc(SOURCES[p.source] || p.source)} · ${fmtDate(p.occurred_date)}</span>
+                    <h2 class="pending-merchant">${esc(p.merchant)}</h2>
+                    ${p.suggestion_reason === 'rule' ? '<span class="learned"><i class="bi bi-check2" aria-hidden="true"></i> Sugerido por lo que confirmaste antes</span>' : ''}
+                </div>
+                ${amount}
+            </div>
+            ${p.raw_text ? `<p class="raw-text">${esc(p.raw_text)}</p>` : ''}
+            <form class="row g-2" data-id="${p.id}">
+                <div class="col-6 col-md-3">
+                    <label class="form-label" for="type-${p.id}">Tipo</label>
+                    <select class="form-select form-select-sm" id="type-${p.id}" name="type">
+                        <option value="expense" ${type === 'expense' ? 'selected' : ''}>Gasto</option>
+                        <option value="income" ${type === 'income' ? 'selected' : ''}>Ingreso</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label" for="amount-${p.id}">Monto</label>
+                    <input type="text" class="form-control form-control-sm num" id="amount-${p.id}" name="amount" inputmode="decimal" autocomplete="off" required placeholder="0,00" value="${amountInput(p.amount)}">
+                </div>
+                <div class="col-12 col-md-6">
+                    <label class="form-label" for="desc-${p.id}">Descripción</label>
+                    <input type="text" class="form-control form-control-sm" id="desc-${p.id}" name="description" maxlength="255" required value="${esc(p.merchant)}">
+                </div>
+                <div class="col-12 col-md-6">
+                    <label class="form-label" for="cat-${p.id}">Categoría</label>
+                    <select class="form-select form-select-sm" id="cat-${p.id}" name="category" required>${categoryOptions(type, p.suggested_category_id)}</select>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label class="form-label" for="med-${p.id}">Cuenta o tarjeta</label>
+                    <select class="form-select form-select-sm" id="med-${p.id}" name="medium" required>${mediumOptions(type, p)}</select>
+                </div>
+                <div class="col-12 remember">
+                    <input class="form-check-input mt-0" type="checkbox" name="remember" id="remember-${p.id}" checked>
+                    <label for="remember-${p.id}">Recordar para comercios que empiecen con</label>
+                    <input type="text" class="form-control form-control-sm" name="remember_key" maxlength="120" aria-label="Texto del comercio a recordar" value="${esc(p.suggested_rule_key)}">
+                </div>
+                <div class="col-12 pending-actions">
+                    <button type="button" class="btn btn-outline-danger btn-sm" data-discard="${p.id}">Descartar</button>
+                    <button type="submit" class="btn btn-primary" ${noMedium ? 'disabled' : ''}><i class="bi bi-check2 me-1" aria-hidden="true"></i>Confirmar</button>
+                </div>
+            </form>
+        </article>`;
+    }).join('');
+
+    // Al verlos aquí dejan de estar marcados como nuevos (en la próxima visita)
+    localStorage.setItem(SEEN_KEY, JSON.stringify([...new Set([...seen, ...items.map(p => p.id)])].slice(-300)));
+    if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
+}
+
+async function loadPending() {
+    try {
+        const res = await authFetch('/api/v1/pending');
+        renderPending(res.ok ? await res.json() : []);
+        refreshPendingBadge();
+    } catch (e) {
+        document.getElementById('pendingList').innerHTML = '<div class="alert alert-danger">No se pudieron cargar los pendientes.</div>';
+    }
+}
+
+document.getElementById('pendingList').addEventListener('change', (e) => {
+    const form = e.target.form;
+    if (!form) return;
+    if (e.target.name === 'type') {
+        const p = pendingById[form.dataset.id];
+        const type = e.target.value;
+        form.category.innerHTML = categoryOptions(type, null);
+        form.medium.innerHTML = mediumOptions(type, type === 'income' ? { ...p, suggested_card_id: null } : p);
+    }
+    if (e.target.name === 'remember') form.remember_key.disabled = !e.target.checked;
+});
+
+document.getElementById('pendingList').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('[type="submit"]');
+    const [kind, mediumId] = form.medium.value.split(':');
+    const amount = parseAmountInput(form.amount.value);
+    if (!amount) {
+        showAlert('danger', 'Escribe un monto válido, por ejemplo 12,50.');
+        form.amount.focus();
+        return;
+    }
+    const body = {
+        transaction_type: form.type.value,
+        amount,
+        category_id: parseInt(form.category.value, 10),
+        description: form.description.value.trim(),
+        source_account_id: kind === 'acc' ? parseInt(mediumId, 10) : null,
+        card_id: kind === 'card' ? parseInt(mediumId, 10) : null,
+        remember: form.remember.checked,
+        remember_key: form.remember.checked ? form.remember_key.value.trim() : null,
+    };
+    btn.disabled = true;
+    try {
+        const res = await authFetch(`/api/v1/pending/${form.dataset.id}/confirm`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(apiError(data, 'No se pudo confirmar.'));
+        showAlert('success', `Registrado: ${data.description}, ${money(data.amount)}.`);
+        await Promise.all([loadPending(), loadRules()]);
+    } catch (err) {
+        showAlert('danger', err.message);
+        btn.disabled = false;
+    }
+});
+
+document.getElementById('pendingList').addEventListener('click', async (e) => {
+    const id = e.target.closest('[data-discard]')?.dataset.discard;
+    if (!id || !confirm('¿Descartar este pago? No se registrará ningún movimiento.')) return;
+    const res = await authFetch(`/api/v1/pending/${id}/discard`, { method: 'POST' });
+    if (res.ok) { showAlert('secondary', 'Pago descartado.'); loadPending(); }
+});
+
+async function loadSettings() {
+    const res = await authFetch('/api/v1/pending/settings');
+    if (res.ok) document.getElementById('autoConfirmSwitch').checked = (await res.json()).auto_confirm_known;
+}
+
+document.getElementById('autoConfirmSwitch').addEventListener('change', async (e) => {
+    const res = await authFetch('/api/v1/pending/settings', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auto_confirm_known: e.target.checked }),
+    });
+    if (!res.ok) { e.target.checked = !e.target.checked; showAlert('danger', 'No se pudo guardar la configuración.'); }
+});
+
+async function loadRules() {
+    const res = await authFetch('/api/v1/pending/rules');
+    const rules = res.ok ? await res.json() : [];
+    const box = document.getElementById('rulesList');
+    box.innerHTML = rules.length ? rules.map(r => `
+        <div class="rule-item">
+            <span class="fw-semibold">${esc(r.display_name)}</span>
+            <button type="button" class="btn btn-outline-danger btn-sm" data-rule="${r.id}" aria-label="Olvidar ${esc(r.display_name)}"><i class="bi bi-trash"></i></button>
+            <span class="meta">${esc(r.category_name || 'Sin categoría')} · ${esc(r.card_name || r.account_name || 'Sin cuenta')} · ${r.times_confirmed} ${r.times_confirmed === 1 ? 'vez' : 'veces'}</span>
+        </div>`).join('') : '<p class="mb-0">Aún no hay comercios aprendidos.</p>';
+}
+
+document.getElementById('rulesList').addEventListener('click', async (e) => {
+    const id = e.target.closest('[data-rule]')?.dataset.rule;
+    if (!id || !confirm('¿Olvidar este comercio? Sus próximos pagos volverán a pedir confirmación.')) return;
+    const res = await authFetch(`/api/v1/pending/rules/${id}`, { method: 'DELETE' });
+    if (res.ok) loadRules();
+});
+
+// Dirección del webhook para Atajos
+async function loadWebhookUrl(method = 'GET', url = '/api/v1/webhooks/my-token') {
+    const res = await authFetch(url, { method });
+    if (!res.ok) return;
+    const data = await res.json();
+    document.getElementById('webhookUrl').value = data.webhook_url;
+    document.getElementById('webhookToken').value = data.webhook_token;
+}
+bindPasswordToggle('toggleWebhookToken', 'webhookToken');
+document.querySelectorAll('[data-copy]').forEach(btn => btn.addEventListener('click', async () => {
+    const value = document.getElementById(btn.dataset.copy).value;
+    if (!value) return;
+    await navigator.clipboard.writeText(value);
+    btn.textContent = 'Copiado';
+    setTimeout(() => { btn.textContent = 'Copiar'; }, 1800);
+}));
+document.getElementById('regenerateWebhook').addEventListener('click', () => {
+    if (confirm('El token actual dejará de funcionar y tendrás que cambiarlo en tus atajos. ¿Continuar?')) {
+        loadWebhookUrl('POST', '/api/v1/webhooks/regenerate-token');
+    }
+});
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadReferenceData();
+    loadPending();
+    loadSettings();
+    loadRules();
+    loadWebhookUrl();
+});
+</script>
+{% endblock %}

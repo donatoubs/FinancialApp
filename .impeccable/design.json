@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-17T00:00:00Z",
+  "title": "Design System: FinancialApp",
+  "extensions": {
+    "colorMeta": {
+      "storm-50": { "role": "neutral", "displayName": "Storm Panel", "tonalRamp": ["#2B3036", "#4A535C", "#7D8892", "#AEB6BD", "#CBD1D6", "#DEE2E5", "#F2F4F5", "#FAFBFB"] },
+      "storm-100": { "role": "neutral", "displayName": "Storm Ground", "tonalRamp": ["#2B3036", "#4A535C", "#7D8892", "#AEB6BD", "#CBD1D6", "#DEE2E5", "#F2F4F5", "#FAFBFB"] },
+      "storm-200": { "role": "neutral", "displayName": "Storm Rule", "tonalRamp": ["#2B3036", "#4A535C", "#7D8892", "#AEB6BD", "#CBD1D6", "#DEE2E5", "#F2F4F5", "#FAFBFB"] },
+      "storm-300": { "role": "neutral", "displayName": "Storm Rule Strong", "tonalRamp": ["#2B3036", "#4A535C", "#7D8892", "#AEB6BD", "#CBD1D6", "#DEE2E5", "#F2F4F5", "#FAFBFB"] },
+      "storm-400": { "role": "neutral", "displayName": "Storm Slate", "tonalRamp": ["#2B3036", "#4A535C", "#7D8892", "#AEB6BD", "#CBD1D6", "#DEE2E5", "#F2F4F5", "#FAFBFB"] },
+      "carbon-950": { "role": "primary", "displayName": "Carbon Black", "tonalRamp": ["#0F1011", "#17181A", "#1E2023", "#23262A", "#2B2E32", "#4A5058", "#8E969E", "#D3D7DB"] },
+      "carbon-900": { "role": "primary", "displayName": "Deep Carbon", "tonalRamp": ["#0F1011", "#17181A", "#1E2023", "#23262A", "#2B2E32", "#4A5058", "#8E969E", "#D3D7DB"] },
+      "carbon-800": { "role": "primary", "displayName": "Matte Black", "tonalRamp": ["#0F1011", "#17181A", "#1E2023", "#23262A", "#2B2E32", "#4A5058", "#8E969E", "#D3D7DB"] },
+      "carbon-700": { "role": "primary", "displayName": "Carbon Hover", "tonalRamp": ["#0F1011", "#17181A", "#1E2023", "#23262A", "#2B2E32", "#4A5058", "#8E969E", "#D3D7DB"] },
+      "carbon-600": { "role": "primary", "displayName": "Carbon Action", "tonalRamp": ["#0F1011", "#17181A", "#1E2023", "#23262A", "#2B2E32", "#4A5058", "#8E969E", "#D3D7DB"] },
+      "carbon-500": { "role": "neutral", "displayName": "Carbon Slate", "tonalRamp": ["#0F1011", "#17181A", "#1E2023", "#23262A", "#2B2E32", "#4A5058", "#8E969E", "#D3D7DB"] },
+      "safety": { "role": "secondary", "displayName": "Safety Orange", "tonalRamp": ["#4A1D04", "#7A3006", "#A8430A", "#E85A0C", "#FF6B1A", "#F7BE9B", "#FFE3D2", "#FFF4EC"] },
+      "safety-ink": { "role": "secondary", "displayName": "Safety Ink", "tonalRamp": ["#4A1D04", "#7A3006", "#A8430A", "#E85A0C", "#FF6B1A", "#F7BE9B", "#FFE3D2", "#FFF4EC"] },
+      "safety-wash": { "role": "secondary", "displayName": "Safety Wash", "tonalRamp": ["#4A1D04", "#7A3006", "#A8430A", "#E85A0C", "#FF6B1A", "#F7BE9B", "#FFE3D2", "#FFF4EC"] },
+      "income": { "role": "tertiary", "displayName": "Ledger Green", "tonalRamp": ["#12301C", "#1F4A2B", "#2E6B3F", "#4C8A5C", "#7FAE8B", "#B5D0BC", "#D7E7DB", "#EEF5F0"] },
+      "income-wash": { "role": "tertiary", "displayName": "Green Wash", "tonalRamp": ["#12301C", "#1F4A2B", "#2E6B3F", "#4C8A5C", "#7FAE8B", "#B5D0BC", "#D7E7DB", "#EEF5F0"] },
+      "expense": { "role": "tertiary", "displayName": "Ledger Red", "tonalRamp": ["#4A100B", "#7E1C14", "#8E1F17", "#B0261C", "#D0675E", "#E9B5AF", "#F6DAD7", "#FCF0EF"] },
+      "expense-wash": { "role": "tertiary", "displayName": "Red Wash", "tonalRamp": ["#4A100B", "#7E1C14", "#8E1F17", "#B0261C", "#D0675E", "#E9B5AF", "#F6DAD7", "#FCF0EF"] },
+      "field": { "role": "neutral", "displayName": "Field White", "tonalRamp": ["#AEB6BD", "#CBD1D6", "#DEE2E5", "#F2F4F5", "#F7F8F9", "#FAFBFB", "#FDFDFD", "#FFFFFF"] },
+      "ink-muted": { "role": "neutral", "displayName": "Muted Ink", "tonalRamp": ["#17181A", "#2B3036", "#49515A", "#6B747D", "#8E969E", "#AEB6BD", "#DEE2E5", "#F2F4F5"] },
+      "ink-faint": { "role": "neutral", "displayName": "Faint Ink", "tonalRamp": ["#17181A", "#2B3036", "#49515A", "#6B747D", "#8E969E", "#AEB6BD", "#DEE2E5", "#F2F4F5"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Denomination", "purpose": "Net-worth figure only; cents split off at about half size and raised 0.72em." },
+      "wordmark": { "displayName": "Wordmark", "purpose": "FinancialApp in the rail (1.55rem), top bar (1.3rem) and auth screens (2rem)." },
+      "headline": { "displayName": "Ledger Figure", "purpose": "Condensed figures in ledger lines, ink rows and pending amounts." },
+      "title": { "displayName": "Page Title", "purpose": "Page head h1; 1.3rem on phones." },
+      "title-sm": { "displayName": "Section Title", "purpose": "Panel, section and sheet titles." },
+      "body": { "displayName": "Body", "purpose": "All UI text; inputs at 1rem to avoid iOS zoom." },
+      "body-sm": { "displayName": "Body Small", "purpose": "Row sub-lines, legends, metadata." },
+      "label": { "displayName": "Label", "purpose": "Definition terms, table headers, chips, badges. Sentence case." }
+    },
+    "shadows": [
+      { "name": "modal-lift", "value": "0 24px 48px -12px rgba(15, 16, 17, 0.4)", "purpose": "Modal dialogs only; the single lifted object in the system." },
+      { "name": "attention-ring", "value": "inset 0 0 0 2px #FF6B1A", "purpose": "Unseen pending payment, until seen. A state, not elevation." },
+      { "name": "field-focus", "value": "0 0 0 3px rgba(255, 107, 26, 0.22)", "purpose": "Focus glow on inputs, selects and checks, with border to carbon-500." },
+      { "name": "focus-outline", "value": "outline: 2px solid #23262A; outline-offset: 2px", "purpose": "Global :focus-visible for links and buttons." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Rosette band draw-in (1.4s), bar growth (0.8s), disclosure chevron (0.2s)." },
+      { "name": "hover", "value": "0.15s ease", "purpose": "Background and color changes on rail links." },
+      { "name": "reduced-motion", "value": "transition and animation durations 0.01ms", "purpose": "Honored globally; the rosette skips its draw-in." }
+    ],
+    "breakpoints": [
+      { "name": "phone-max", "value": "575.98px" },
+      { "name": "tablet", "value": "768px" },
+      { "name": "shell-desktop", "value": "992px" },
+      { "name": "dash-wide", "value": "1200px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Matte carbon slab for the one main action on a surface.",
+      "html": "<button class=\"ds-btn-primary\">Nuevo movimiento</button>",
+      "css": ".ds-btn-primary { font-family: Archivo, system-ui, sans-serif; font-size: 0.9375rem; font-weight: 600; min-height: 40px; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--carbon-600, #23262A); background: var(--carbon-600, #23262A); color: #fff; cursor: pointer; transition: background-color .15s ease, border-color .15s ease; } .ds-btn-primary:hover { background: var(--carbon-700, #2B2E32); border-color: var(--carbon-700, #2B2E32); } .ds-btn-primary:active { background: var(--carbon-800, #1E2023); border-color: var(--carbon-800, #1E2023); } .ds-btn-primary:focus-visible { outline: 2px solid var(--carbon-600, #23262A); outline-offset: 2px; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Neutral gray outline for every secondary action, including Bootstrap warning and info variants.",
+      "html": "<button class=\"ds-btn-outline\">Cancelar</button>",
+      "css": ".ds-btn-outline { font-family: Archivo, system-ui, sans-serif; font-size: 0.9375rem; font-weight: 600; min-height: 40px; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--storm-300, #AEB6BD); background: transparent; color: var(--carbon-800, #1E2023); cursor: pointer; transition: background-color .15s ease; } .ds-btn-outline:hover { background: var(--storm-200, #CBD1D6); color: var(--carbon-900, #17181A); } .ds-btn-outline:active { background: var(--storm-300, #AEB6BD); border-color: var(--storm-400, #7D8892); } .ds-btn-outline:focus-visible { outline: 2px solid var(--carbon-600, #23262A); outline-offset: 2px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Confirm step inside a dialog's danger zone only.",
+      "html": "<button class=\"ds-btn-danger\">Sí, eliminar</button>",
+      "css": ".ds-btn-danger { font-family: Archivo, system-ui, sans-serif; font-size: 0.9375rem; font-weight: 600; min-height: 40px; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--expense, #B0261C); background: var(--expense, #B0261C); color: #fff; cursor: pointer; } .ds-btn-danger:hover { background: #8E1F17; border-color: #8E1F17; } .ds-btn-danger:focus-visible { outline: 2px solid var(--carbon-600, #23262A); outline-offset: 2px; }"
+    },
+    {
+      "name": "Amount Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "White field with label above; orange glow on focus. Accepts 1.234,50.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Monto</span><input class=\"ds-input\" inputmode=\"decimal\" placeholder=\"0,00\"></label>",
+      "css": ".ds-field { display: grid; gap: 6px; font-family: Archivo, system-ui, sans-serif; max-width: 280px; } .ds-field-label { font-size: 0.8125rem; font-weight: 600; color: var(--ink-muted, #49515A); } .ds-input { font: inherit; font-size: 1rem; font-variant-numeric: tabular-nums; min-height: 42px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--storm-300, #AEB6BD); background: #fff; color: var(--carbon-900, #17181A); caret-color: var(--carbon-600, #23262A); } .ds-input::placeholder { color: var(--ink-faint, #6B747D); } .ds-input:focus { outline: none; border-color: var(--carbon-500, #4A5058); box-shadow: 0 0 0 3px rgba(255, 107, 26, 0.22); }"
+    },
+    {
+      "name": "Rail Navigation",
+      "kind": "nav",
+      "refersTo": "rail",
+      "description": "Matte black desktop rail; active item in a carbon well with safety orange text and the pending count.",
+      "html": "<nav class=\"ds-rail\"><span class=\"ds-rail-brand\">FinancialApp</span><a class=\"ds-rail-link is-active\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.3\" aria-hidden=\"true\"><rect x=\"1.5\" y=\"1.5\" width=\"5\" height=\"13\" rx=\"1\"/><rect x=\"9.5\" y=\"1.5\" width=\"5\" height=\"5\" rx=\"1\"/><rect x=\"9.5\" y=\"9.5\" width=\"5\" height=\"5\" rx=\"1\"/></svg>Resumen</a><a class=\"ds-rail-link\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.3\" aria-hidden=\"true\"><path d=\"M1.5 9.5 3.5 3h9l2 6.5V13a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z\"/><path d=\"M1.5 9.5h4l1 1.5h3l1-1.5h4\"/></svg>Pendientes<span class=\"ds-count\">3</span></a><a class=\"ds-rail-link\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.3\" aria-hidden=\"true\"><path d=\"M2 5h11M10 2l3 3-3 3M14 11H3M6 8l-3 3 3 3\"/></svg>Movimientos</a></nav>",
+      "css": ".ds-rail { width: 236px; padding: 24px 14px 18px; background: var(--carbon-800, #1E2023); display: flex; flex-direction: column; gap: 2px; font-family: Archivo, system-ui, sans-serif; } .ds-rail-brand { font-stretch: 78%; font-variation-settings: 'wdth' 78; font-size: 1.55rem; font-weight: 800; color: var(--storm-50, #F2F4F5); padding: 4px 12px 26px; } .ds-rail-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 6px; color: #C4CAD0; text-decoration: none; font-weight: 500; font-size: 0.9375rem; transition: background-color .15s ease, color .15s ease; } .ds-rail-link:hover { background: var(--carbon-700, #2B2E32); color: var(--storm-50, #F2F4F5); } .ds-rail-link.is-active { background: var(--carbon-900, #17181A); color: var(--safety, #FF6B1A); } .ds-rail-link:focus-visible { outline: 2px solid var(--storm-50, #F2F4F5); outline-offset: 2px; } .ds-count { margin-left: auto; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; background: var(--safety, #FF6B1A); color: var(--carbon-950, #0F1011); font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }"
+    },
+    {
+      "name": "Chips",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Status pills: neutral, near limit or due soon (safety ink), exceeded (expense).",
+      "html": "<span class=\"ds-chip\">Inactiva</span> <span class=\"ds-chip ds-chip-alert\">Vence en 3 días</span> <span class=\"ds-chip ds-chip-danger\">Superado</span>",
+      "css": ".ds-chip { display: inline-block; font-family: Archivo, system-ui, sans-serif; font-size: 0.75rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--storm-200, #CBD1D6); color: var(--carbon-900, #17181A); } .ds-chip-alert { background: var(--safety-wash, #FFE3D2); color: var(--safety-ink, #A8430A); } .ds-chip-danger { background: var(--expense-wash, #F6DAD7); color: var(--expense, #B0261C); }"
+    },
+    {
+      "name": "Ledger Line",
+      "kind": "custom",
+      "refersTo": "panel",
+      "description": "Ruled strip of label-over-figure pairs that replaces KPI cards.",
+      "html": "<dl class=\"ds-ledger\"><div><dt>Saldo total</dt><dd>$13.735,30<small>3 cuentas</small></dd></div><div><dt>Deuda de tarjetas</dt><dd>$1.575,00<small>35% del cupo usado</small></dd></div><div><dt>Balance del mes</dt><dd class=\"in\">+$1.159,20</dd></div></dl>",
+      "css": ".ds-ledger { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px 28px; margin: 0; padding: 16px 0; border-top: 1px solid var(--storm-300, #AEB6BD); border-bottom: 1px solid var(--storm-200, #CBD1D6); font-family: Archivo, system-ui, sans-serif; } .ds-ledger dt { font-size: 0.75rem; font-weight: 600; color: var(--ink-muted, #49515A); } .ds-ledger dd { margin: 4px 0 0; font-stretch: 78%; font-variation-settings: 'wdth' 78; font-weight: 700; font-size: 1.6rem; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums lining-nums; color: var(--carbon-900, #17181A); } .ds-ledger dd.in { color: var(--income, #2E6B3F); } .ds-ledger dd small { display: block; font-stretch: 100%; font-variation-settings: 'wdth' 100; font-size: 0.75rem; font-weight: 500; letter-spacing: 0; color: var(--ink-muted, #49515A); margin-top: 4px; }"
+    },
+    {
+      "name": "Ink Row",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Account, card or budget row printed in its bank ink: ink square, title, condensed figure, meter.",
+      "html": "<div class=\"ds-rows\"><div class=\"ds-ink-row\" style=\"--ink-color:#1F4E9C\"><span class=\"ds-ink\"></span><div><div class=\"ds-title\">Visa Guayaquil</div><div class=\"ds-sub\">Banco Guayaquil · •••• 4821</div></div><div class=\"ds-figure\">$1.260,00</div><div class=\"ds-detail\"><span class=\"ds-meter\"><span style=\"width:84%\"></span></span><span>84% del cupo</span></div></div></div>",
+      "css": ".ds-rows { background: var(--storm-50, #F2F4F5); border: 1px solid var(--storm-200, #CBD1D6); border-radius: 10px; font-family: Archivo, system-ui, sans-serif; max-width: 520px; } .ds-ink-row { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 4px 14px; align-items: center; padding: 16px 18px; } .ds-ink { align-self: start; width: 12px; height: 12px; margin-top: 5px; border-radius: 3px; background: var(--ink-color, #7D8892); } .ds-title { font-weight: 700; color: var(--carbon-900, #17181A); } .ds-sub { font-size: 0.8125rem; color: var(--ink-muted, #49515A); font-variant-numeric: tabular-nums; } .ds-figure { font-stretch: 78%; font-variation-settings: 'wdth' 78; font-weight: 700; font-size: 1.5rem; line-height: .95; letter-spacing: -0.02em; text-align: right; font-variant-numeric: tabular-nums lining-nums; color: var(--carbon-900, #17181A); } .ds-detail { grid-column: 2 / -1; display: flex; align-items: center; gap: 8px 16px; font-size: 0.8125rem; color: var(--ink-muted, #49515A); } .ds-meter { flex: 1 1 160px; height: 6px; border-radius: 3px; background: var(--storm-200, #CBD1D6); overflow: hidden; } .ds-meter span { display: block; height: 100%; background: var(--ink-color, #4A5058); }"
+    },
+    {
+      "name": "Pending Item",
+      "kind": "custom",
+      "refersTo": "count-badge",
+      "description": "Payment waiting from the iPhone; unseen items carry the Nuevo marker and the orange inset ring.",
+      "html": "<a class=\"ds-pending is-new\" href=\"#\"><span class=\"ds-m\"><span class=\"ds-new\">Nuevo</span>Supermaxi La Carolina</span><span class=\"ds-a\">−$23,40</span><span class=\"ds-s\">Apple Pay · Visa Guayaquil · Alimentación</span></a>",
+      "css": ".ds-pending { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 12px; border-radius: 6px; border: 1px solid var(--storm-200, #CBD1D6); background: var(--storm-50, #F2F4F5); color: var(--carbon-900, #17181A); text-decoration: none; font-family: Archivo, system-ui, sans-serif; max-width: 360px; } .ds-pending:hover { border-color: var(--storm-300, #AEB6BD); } .ds-pending.is-new { box-shadow: inset 0 0 0 2px var(--safety, #FF6B1A); } .ds-pending:focus-visible { outline: 2px solid var(--carbon-600, #23262A); outline-offset: 2px; } .ds-m { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-new { display: inline-block; background: var(--safety, #FF6B1A); color: var(--carbon-950, #0F1011); font-size: 0.6875rem; border-radius: 999px; padding: 0 7px; margin-right: 6px; vertical-align: 1px; } .ds-a { font-weight: 700; font-variant-numeric: tabular-nums; } .ds-s { grid-column: 1 / -1; font-size: 0.75rem; color: var(--ink-muted, #49515A); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Engraved Ledger",
+    "overview": "Money is read the way a banknote is read: the big number is set like a denomination, and every account is printed in its own bank's ink. The world is industrial rather than ornamental. A light storm-gray ground carries near-white panels separated by hairline gray rules; a matte black rail (desktop) or top bar and tab bar (iPhone) frames everything; safety orange appears only where something needs the user's attention. Engraving survives in two places only: the condensed, heavy, tabular figures, and the guilloche funds rosette on the Resumen.\n\nDensity is that of an operating tool used on a thumb and on a large screen equally. Panels are flat, information sits in ruled rows and figure lines rather than in stacks of identical cards, and charts that compare months share one fixed scale. The interface speaks Spanish (Ecuador): amounts are written $1.234,56 with a true minus sign (U+2212), percentages with a decimal comma, dates as \"5 nov\" (year added only when it is not the current one).\n\nConfirmed rejections from the brief: the category's blue sidebar, rows of four identical KPI cards, the donut chart, gradients and glass.",
+    "keyCharacteristics": [
+      "Three-color world: storm gray ground, matte black frame and primary actions, safety orange for attention only.",
+      "Bank colors exist only as account and card ink (dots, row inks, meters, rosette bands).",
+      "One typeface, Archivo, in two widths: condensed 78% heavy for figures and the wordmark, normal width for all UI.",
+      "Tabular, lining numerals on every surface.",
+      "Flat panels on hairline rules; the only lifted object is the modal.",
+      "Spanish (Ecuador) money and date formatting as a visual invariant."
+    ],
+    "rules": [
+      { "name": "The Attention Rule", "body": "Safety orange marks only what needs the user: something waiting, something new, where they are, something close to its limit. Never a primary button, never decoration, never a chart series. Bootstrap's warning and info buttons are deliberately neutralized to outline gray.", "section": "colors" },
+      { "name": "The Bank Ink Rule", "body": "A bank's own color appears only as the ink of its account or card: the 10-12px ink square, the row's ink mark, its meter fill, its rosette band. It never tints a panel, a button or text.", "section": "colors" },
+      { "name": "The Money Direction Rule", "body": "Green means money in and red means money out; neither is used for anything else except success and destructive states.", "section": "colors" },
+      { "name": "The Datamatics Rule", "body": "Every number is tabular and lining (set globally on body). Columns of amounts must align digit for digit.", "section": "typography" },
+      { "name": "The Two Widths Rule", "body": "Condensed width is reserved for money figures and the wordmark. Small print attached to a figure (a `small` under a ledger value) drops back to normal width and 500 weight.", "section": "typography" },
+      { "name": "The Flat Panel Rule", "body": "Panels, rows and cards never cast shadows. If something must stand forward, it is a modal.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do format every amount through the shared money formatter: $1.234,56, U+2212 minus, explicit + only where direction matters.",
+      "Do write dates as \"5 nov\", adding the year only outside the current year.",
+      "Do set money figures in Archivo condensed 78% at 700, with tabular lining numerals.",
+      "Do keep safety orange for pending counts, active navigation, unseen marks, near-limit and due-soon chips, and focus glow.",
+      "Do carry each bank's color as a row or legend ink through the ink custom property, falling back to storm-400 when none is set.",
+      "Do put summary numbers in a ruled ledger line and lists in ruled ink rows inside one panel.",
+      "Do keep every monthly comparison on one fixed scale.",
+      "Do isolate deletes in a danger zone with an ask and confirm step.",
+      "Do keep form inputs at 1rem and touch targets at 40px or more."
+    ],
+    "donts": [
+      "Don't use safety orange for primary buttons, chart series, headings or decoration.",
+      "Don't let a bank color tint a panel, a button, a heading or body text.",
+      "Don't add shadows to panels or rows, or use gradients or glass.",
+      "Don't build rows of identical KPI cards or donut charts; use the ledger line and the rosette.",
+      "Don't use the condensed width for UI text, labels or paragraphs.",
+      "Don't uppercase or letter-space labels; they are sentence-case 600.",
+      "Don't use a hyphen as a minus sign or a dot as the decimal separator in displayed amounts."
+    ]
+  }
+}

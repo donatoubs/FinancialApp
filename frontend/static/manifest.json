@@ -1,29 +1,25 @@
 {
-  "name": "FinancialApp - Gestión Financiera",
+  "name": "FinancialApp",
   "short_name": "FinancialApp",
-  "description": "Plataforma profesional de gestión financiera personal, cuentas, tarjetas y presupuestos.",
-  "start_url": "/",
+  "description": "Cuentas, tarjetas, movimientos y presupuestos personales.",
+  "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#2563eb",
+  "background_color": "#DEE2E5",
+  "theme_color": "#1E2023",
   "orientation": "portrait",
   "icons": [
     {
       "src": "/static/img/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/static/img/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/static/img/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
+      "purpose": "any"
     }
-  ]
+  ],
+  "lang": "es-EC"
 }

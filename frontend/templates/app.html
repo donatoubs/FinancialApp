@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{#
+  Shell de la app autenticada: riel lateral (escritorio), barra superior y
+  pestañas inferiores (iPhone), y modal de perfil. Cada página define:
+    {% block content %}       contenido principal (incluye sus modales)
+    {% block extra_scripts %} scripts propios
+  La ruta pasa `active` para marcar la sección actual.
+#}
+{% set nav = [
+    ("dashboard", "/dashboard", "bi-grid-1x2", "Resumen"),
+    ("pending", "/pending", "bi-inbox", "Pendientes"),
+    ("transactions", "/transactions", "bi-arrow-left-right", "Movimientos"),
+    ("accounts", "/accounts", "bi-bank", "Cuentas"),
+    ("cards", "/cards", "bi-credit-card", "Tarjetas"),
+    ("budgets", "/budgets", "bi-pie-chart", "Presupuestos"),
+] %}
+
+{% block body_class %}app{% endblock %}
+
+{% block body %}
+<a class="skip-link" href="#main">Saltar al contenido</a>
+
+<!-- Riel lateral (escritorio) -->
+<aside class="rail" aria-label="Navegación principal">
+    <a href="/dashboard" class="rail-brand">FinancialApp</a>
+    <nav class="rail-nav">
+        {% for key, href, icon, label in nav %}
+        <a href="{{ href }}" class="rail-link{% if active == key %} is-active{% endif %}"{% if active == key %} aria-current="page"{% endif %}>
+            <i class="bi {{ icon }}" aria-hidden="true"></i>
+            <span>{{ label }}</span>
+            {% if key == "pending" %}<span class="count" data-pending-count hidden>0</span>{% endif %}
+        </a>
+        {% endfor %}
+    </nav>
+    <div class="rail-foot">
+        <button type="button" class="rail-user" data-action="profile">
+            <i class="bi bi-person-circle" aria-hidden="true"></i>
+            <span data-user-name>Usuario</span>
+        </button>
+        <button type="button" class="rail-logout" data-action="logout">
+            <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Salir
+        </button>
+    </div>
+</aside>
+
+<!-- Barra superior (iPhone) -->
+<header class="topbar">
+    <a href="/dashboard" class="topbar-brand">FinancialApp</a>
+    <div class="topbar-actions">
+        <a href="/transactions?nuevo=1" class="topbar-add" aria-label="Nuevo movimiento"><i class="bi bi-plus-lg" aria-hidden="true"></i></a>
+        <button type="button" class="topbar-user" data-action="profile" aria-label="Mi perfil">
+            <i class="bi bi-person-circle" aria-hidden="true"></i>
+        </button>
+    </div>
+</header>
+
+<main id="main" class="page">
+    {% block content %}{% endblock %}
+</main>
+
+<!-- Pestañas inferiores (iPhone) -->
+<nav class="tabbar" aria-label="Navegación principal">
+    {% for key, href, icon, label in nav[:4] %}
+    <a href="{{ href }}" class="tab{% if active == key %} is-active{% endif %}"{% if active == key %} aria-current="page"{% endif %}>
+        <span class="tab-icon">
+            <i class="bi {{ icon }}" aria-hidden="true"></i>
+            {% if key == "pending" %}<span class="count" data-pending-count hidden>0</span>{% endif %}
+        </span>
+        <span>{{ label }}</span>
+    </a>
+    {% endfor %}
+    <button type="button" class="tab{% if active in ['cards', 'budgets'] %} is-active{% endif %}" data-bs-toggle="offcanvas" data-bs-target="#moreSheet" aria-controls="moreSheet">
+        <span class="tab-icon"><i class="bi bi-three-dots" aria-hidden="true"></i></span>
+        <span>Más</span>
+    </button>
+</nav>
+
+<div class="offcanvas offcanvas-bottom sheet" tabindex="-1" id="moreSheet" aria-labelledby="moreSheetTitle">
+    <div class="offcanvas-header">
+        <h2 class="offcanvas-title" id="moreSheetTitle">Más</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+    </div>
+    <div class="offcanvas-body">
+        {% for key, href, icon, label in nav[4:] %}
+        <a href="{{ href }}" class="sheet-link"><i class="bi {{ icon }}" aria-hidden="true"></i>{{ label }}</a>
+        {% endfor %}
+        <button type="button" class="sheet-link" data-action="profile" data-bs-dismiss="offcanvas"><i class="bi bi-person-circle" aria-hidden="true"></i>Mi perfil</button>
+        <button type="button" class="sheet-link sheet-link-danger" data-action="logout"><i class="bi bi-box-arrow-right" aria-hidden="true"></i>Salir</button>
+    </div>
+</div>
+
+<!-- Perfil -->
+<div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content" id="profileForm">
+            <div class="modal-header">
+                <h2 class="modal-title" id="profileModalTitle">Mi perfil</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="profileAlert" class="alert d-none" role="alert"></div>
+                <div class="mb-3">
+                    <label for="profileFullName" class="form-label">Nombre</label>
+                    <input type="text" class="form-control" id="profileFullName" required minlength="2" maxlength="100" autocomplete="name">
+                </div>
+                <div class="mb-3">
+                    <label for="profileEmail" class="form-label">Correo</label>
+                    <input type="email" class="form-control" id="profileEmail" readonly disabled>
+                </div>
+                <div class="mb-3">
+                    <label for="profileCurrency" class="form-label">Moneda</label>
+                    <select class="form-select" id="profileCurrency">
+                        <option value="USD">USD · Dólar</option>
+                        <option value="EUR">EUR · Euro</option>
+                        <option value="COP">COP · Peso colombiano</option>
+                        <option value="PEN">PEN · Sol peruano</option>
+                    </select>
+                </div>
+                <fieldset class="mb-1">
+                    <legend class="form-label">Cambiar contraseña <span class="text-muted fw-normal">(opcional)</span></legend>
+                    <input type="password" class="form-control mb-2" id="profileCurrentPassword" placeholder="Contraseña actual" autocomplete="current-password">
+                    <div class="input-group mb-2">
+                        <input type="password" class="form-control" id="profileNewPassword" placeholder="Nueva contraseña" minlength="8" autocomplete="new-password">
+                        <button class="btn btn-outline-secondary" type="button" id="toggleProfilePwd" aria-label="Mostrar contraseña"><i class="bi bi-eye"></i></button>
+                    </div>
+                    <input type="password" class="form-control" id="profileConfirmPassword" placeholder="Repite la contraseña" minlength="8" autocomplete="new-password">
+                </fieldset>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
