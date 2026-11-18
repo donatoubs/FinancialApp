@@ -56,7 +56,7 @@ class Api:
     def __init__(self, client: TestClient):
         self.client = client
         self.email = f"user-{uuid.uuid4().hex[:10]}@example.com"
-        r = client.post("/api/v1/auth/register", json={"email": self.email, "password": PASSWORD, "full_name": "Usuario Prueba"})
+        r = client.post("/api/v1/auth/register", json={"email": self.email, "password": PASSWORD, "full_name": "Usuario Prueba", "phone": "0991234567"})
         assert r.status_code == 201, r.text
         self.headers = {"Authorization": "Bearer " + r.json()["token"]["access_token"]}
 
