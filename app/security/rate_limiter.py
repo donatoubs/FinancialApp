@@ -10,6 +10,7 @@ separado (el límite efectivo se multiplica por el número de workers); para un 
 personal/familiar es suficiente. Para algo mayor, mover esto a Redis.
 """
 
+import ipaddress
 import time
 from collections import defaultdict
 from typing import Dict, List, Optional
@@ -21,16 +22,28 @@ from app.config import get_settings
 MAX_TRACKED_KEYS = 10_000   # evita que la memoria crezca sin límite
 
 
+def _is_public(ip: str) -> bool:
+    try:
+        return ipaddress.ip_address(ip).is_global
+    except ValueError:
+        return False
+
+
 def client_ip(request: Request) -> str:
     """
-    IP del cliente. Solo se confía en X-Forwarded-For si TRUST_PROXY está activo (Render, Docker
-    detrás de un proxy), y en ese caso se toma la ÚLTIMA IP de la lista: la que agregó el proxy
-    propio. Las primeras las escribe el cliente y se pueden falsificar.
+    IP real del cliente.
+
+    Solo se mira X-Forwarded-For si TRUST_PROXY está activo (Render, Docker detrás de un proxy).
+    La lista crece de izquierda a derecha y cada proxy agrega la IP de quien le habló:
+    "ip-falsa-del-cliente, ip-real-del-cliente, 10.x (proxy interno de Render)".
+    Se recorre desde la derecha y se toma la primera IP pública: las IPs internas son de la
+    infraestructura y las de más a la izquierda las puede inventar el cliente.
     """
     if get_settings().TRUST_PROXY:
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            return forwarded.split(",")[-1].strip()
+        forwarded = request.headers.get("X-Forwarded-For", "")
+        for candidate in reversed([p.strip() for p in forwarded.split(",") if p.strip()]):
+            if _is_public(candidate):
+                return candidate
     return request.client.host if request.client else "unknown"
 
 

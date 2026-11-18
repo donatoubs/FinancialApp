@@ -63,3 +63,18 @@ def test_paginas_cargan_y_portada_redirige(client):
         assert client.get(path).status_code == 200, path
     pending = client.get("/pending").text
     assert "webhookToken" in pending and "Simular" not in pending
+
+
+def test_ip_real_detras_del_proxy_de_render(monkeypatch):
+    from starlette.requests import Request
+    from app.security import rate_limiter
+
+    monkeypatch.setattr(rate_limiter, "get_settings", lambda: type("S", (), {"TRUST_PROXY": True})())
+
+    def ip(xff):
+        scope = {"type": "http", "headers": [(b"x-forwarded-for", xff.encode())], "client": ("10.0.0.9", 1234)}
+        return rate_limiter.client_ip(Request(scope))
+
+    assert ip("181.39.10.20, 10.28.117.134") == "181.39.10.20"            # cliente + proxy interno
+    assert ip("1.2.3.4, 181.39.10.20, 10.27.84.217") == "181.39.10.20"     # la de la izquierda es inventable
+    assert ip("10.1.1.1") == "10.0.0.9"                                     # sin IP pública: la conexión
