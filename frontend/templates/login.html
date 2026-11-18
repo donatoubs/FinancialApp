@@ -36,7 +36,7 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 bindPasswordToggle('togglePassword', 'password');
 const form = document.getElementById('loginForm');
 
@@ -51,11 +51,10 @@ form.addEventListener('submit', async (e) => {
         const res = await fetch('/api/v1/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: form.email.value.trim(), password: form.password.value }),
+            body: JSON.stringify({ email: form.email.value.trim(), password: form.password.value, remember: document.getElementById('remember').checked }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(apiError(data, 'Correo o contraseña incorrectos.'));
-        saveSession(data.token.access_token, data.user, document.getElementById('remember').checked);
         window.location.href = '/dashboard';
     } catch (err) {
         alertBox.className = 'alert alert-danger';

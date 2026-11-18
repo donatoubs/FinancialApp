@@ -22,7 +22,7 @@ class CardBase(BaseModel):
     interest_rate: Optional[Decimal] = Field(default=Decimal("0.00"), ge=Decimal("0.00"), le=Decimal("100.00"), description="Tasa de interés anual (%)", examples=[Decimal("16.50")])
     
     currency: str = Field(default="USD", min_length=3, max_length=3, description="Moneda de la tarjeta", examples=["USD"])
-    color: str = Field(default="#003b6f", max_length=20, description="Color representativo o corporativo", examples=["#ffdd00"])
+    color: str = Field(default="#003b6f", max_length=7, pattern=r"^#[0-9A-Fa-f]{6}$", description="Color representativo o corporativo", examples=["#ffdd00"])
     bank_account_id: Optional[int] = Field(None, description="ID de la cuenta bancaria vinculada para débito o pago automático")
     is_active: bool = Field(default=True, description="Estado activo o inactivo de la tarjeta")
 
@@ -43,7 +43,7 @@ class CardUpdate(BaseModel):
     due_day: Optional[int] = Field(None, ge=1, le=31)
     interest_rate: Optional[Decimal] = Field(None, ge=Decimal("0.00"), le=Decimal("100.00"))
     currency: Optional[str] = Field(None, min_length=3, max_length=3)
-    color: Optional[str] = None
+    color: Optional[str] = Field(None, max_length=7, pattern=r"^#[0-9A-Fa-f]{6}$")
     bank_account_id: Optional[int] = None
     is_active: Optional[bool] = None
 

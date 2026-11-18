@@ -1,53 +1,61 @@
 """
-Middleware de Seguridad HTTP y Monitoreo de Rendimiento.
-Inyecta cabeceras de seguridad recomendadas por OWASP.
+Middleware de seguridad HTTP.
+
+- HTTPS forzado en producción (redirección 308 y HSTS).
+- Content-Security-Policy con nonce por petición: el navegador solo ejecuta los scripts de la app
+  (los que llevan el nonce de esa respuesta) y los de cdn.jsdelivr.net. Un script inyectado (XSS)
+  no tiene el nonce y no se ejecuta; tampoco los atributos onclick="..." ni los enlaces javascript:.
+- Cabeceras OWASP: nosniff, sin iframes de otros sitios, referrer limitado, permisos del navegador cerrados.
+- Las respuestas de la API (datos personales) no se guardan en caché.
 """
 
-import time
+import secrets
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import RedirectResponse, Response
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """
-    Inyecta cabeceras de seguridad HTTP en todas las respuestas para proteger la aplicación
-    contra ataques XSS, Clickjacking, MIME-sniffing y filtración de datos de referencia.
-    """
-
-    def __init__(self, app, hsts: bool = False):
+    def __init__(self, app, production: bool = False):
         super().__init__(app)
-        self.hsts = hsts  # HTTPS obligatorio en el navegador (solo producción)
+        self.production = production
 
     async def dispatch(self, request: Request, call_next) -> Response:
-        start_time = time.perf_counter()
+        # HTTPS obligatorio (Render termina TLS y avisa el protocolo original en X-Forwarded-Proto)
+        if self.production and request.headers.get("x-forwarded-proto", "https") == "http":
+            return RedirectResponse(str(request.url.replace(scheme="https")), status_code=308)
+
+        nonce = secrets.token_urlsafe(16)
+        request.state.csp_nonce = nonce
         response: Response = await call_next(request)
-        process_time = (time.perf_counter() - start_time) * 1000
 
-        # Cabeceras de seguridad OWASP
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "SAMEORIGIN"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-        if self.hsts:
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        
-        # Cabecera de rendimiento
-        response.headers["X-Process-Time-Ms"] = f"{process_time:.2f}"
+        h = response.headers
+        h["X-Content-Type-Options"] = "nosniff"
+        h["X-Frame-Options"] = "DENY"
+        h["X-XSS-Protection"] = "0"   # obsoleta; la protección real es la CSP
+        h["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        h["Permissions-Policy"] = "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
+        h["Cross-Origin-Opener-Policy"] = "same-origin"
+        if self.production:
+            h["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        if request.url.path.startswith("/api/"):
+            h["Cache-Control"] = "no-store"
 
-        # Content-Security-Policy (Bootstrap, Bootstrap Icons, Google Fonts y scripts inline de las páginas)
-        csp_policy = (
+        if request.url.path.startswith(("/docs", "/redoc")):
+            return response   # Swagger (solo en desarrollo) usa scripts propios en línea
+        h["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            f"script-src 'self' 'nonce-{nonce}' https://cdn.jsdelivr.net; "
+            "script-src-attr 'none'; "
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
             "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; "
-            "img-src 'self' data: https:; "
+            "img-src 'self' data: blob:; "
             "connect-src 'self'; "
-            "frame-ancestors 'self'; "
+            "object-src 'none'; "
+            "frame-ancestors 'none'; "
             "base-uri 'self'; "
-            "form-action 'self';"
+            "form-action 'self'"
+            + ("; upgrade-insecure-requests" if self.production else "")
         )
-        response.headers["Content-Security-Policy"] = csp_policy
-
         return response

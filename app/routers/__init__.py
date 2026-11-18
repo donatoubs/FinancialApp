@@ -2,7 +2,7 @@
 Módulo de enrutadores de la API REST.
 """
 
-from app.routers import health, auth, accounts, cards, categories, transactions, dashboard, budgets, webhooks, pending, analytics
+from app.routers import health, auth, accounts, cards, categories, transactions, dashboard, budgets, webhooks, pending, analytics, admin
 
 __all__ = [
     "health",
@@ -15,5 +15,6 @@ __all__ = [
     "budgets",
     "webhooks",
     "pending",
-    "analytics"
+    "analytics",
+    "admin",
 ]

@@ -115,7 +115,7 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 const SEEN_KEY = 'financial_seen_pending';
 const KIND = {
     income: { sign: 1, cls: 'amount-in', label: 'Ingreso' },

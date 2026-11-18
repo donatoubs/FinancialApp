@@ -23,7 +23,8 @@ class User(Base):
     # Si es True, los pagos de comercios ya aprendidos se registran solos; el resto va a Pendientes
     webhook_auto_confirm = Column(Boolean, default=True, server_default="true", nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
-    is_superuser = Column(Boolean, default=False, nullable=False)
+    is_superuser = Column(Boolean, default=False, nullable=False)   # acceso al panel de administración
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
     
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(

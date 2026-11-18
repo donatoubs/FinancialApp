@@ -39,7 +39,8 @@ def client():
 @pytest.fixture(autouse=True)
 def reset_rate_limiters():
     """Cada prueba empieza sin intentos acumulados en los limitadores en memoria."""
-    for limiter in (rate_limiter.auth_rate_limiter, rate_limiter.failed_login_limiter, rate_limiter.webhook_rate_limiter):
+    for limiter in (rate_limiter.auth_rate_limiter, rate_limiter.failed_login_limiter, rate_limiter.webhook_rate_limiter,
+                    rate_limiter.webhook_bad_token_limiter):
         limiter._hits.clear()
     yield
 

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {#
   Shell de la app autenticada: riel lateral (escritorio), barra superior y
-  pestañas inferiores (iPhone), y modal de perfil. Cada página define:
+  pestañas inferiores (iPhone). `current_user` lo envía el servidor (sesión en cookie). Cada página define:
     {% block content %}       contenido principal (incluye sus modales)
     {% block extra_scripts %} scripts propios
   La ruta pasa `active` para marcar la sección actual.
@@ -35,9 +35,15 @@
         {% endfor %}
     </nav>
     <div class="rail-foot">
+        {% if current_user and current_user.is_superuser %}
+        <a href="/admin" class="rail-user{% if active == 'admin' %} is-active{% endif %}">
+            <i class="bi bi-shield-lock" aria-hidden="true"></i>
+            <span>Administración</span>
+        </a>
+        {% endif %}
         <a href="/settings" class="rail-user{% if active == 'settings' %} is-active{% endif %}">
             <i class="bi bi-person-circle" aria-hidden="true"></i>
-            <span data-user-name>Usuario</span>
+            <span data-user-name>{{ current_user.full_name if current_user else "Usuario" }}</span>
         </a>
         <button type="button" class="rail-logout" data-action="logout">
             <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Salir
@@ -71,7 +77,7 @@
         <span>{{ label }}</span>
     </a>
     {% endfor %}
-    <button type="button" class="tab{% if active in ['analytics', 'cards', 'budgets', 'settings'] %} is-active{% endif %}" data-bs-toggle="offcanvas" data-bs-target="#moreSheet" aria-controls="moreSheet">
+    <button type="button" class="tab{% if active in ['analytics', 'cards', 'budgets', 'settings', 'admin'] %} is-active{% endif %}" data-bs-toggle="offcanvas" data-bs-target="#moreSheet" aria-controls="moreSheet">
         <span class="tab-icon"><i class="bi bi-three-dots" aria-hidden="true"></i></span>
         <span>Más</span>
     </button>
@@ -87,6 +93,9 @@
         <a href="{{ href }}" class="sheet-link"><i class="bi {{ icon }}" aria-hidden="true"></i>{{ label }}</a>
         {% endfor %}
         <a href="/settings" class="sheet-link"><i class="bi bi-person-circle" aria-hidden="true"></i>Perfil y configuración</a>
+        {% if current_user and current_user.is_superuser %}
+        <a href="/admin" class="sheet-link"><i class="bi bi-shield-lock" aria-hidden="true"></i>Administración</a>
+        {% endif %}
         <button type="button" class="sheet-link sheet-link-danger" data-action="logout"><i class="bi bi-box-arrow-right" aria-hidden="true"></i>Salir</button>
     </div>
 </div>

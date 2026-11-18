@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 from fastapi import HTTPException, status
-from app.auth.security import get_password_hash, verify_password
+from app.auth.security import burn_password_check, get_password_hash, verify_password
 
 
 def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
@@ -45,6 +45,7 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
     """
     user = get_user_by_email(db, email)
     if not user:
+        burn_password_check(password)   # mismo tiempo de respuesta exista o no el correo
         return None
     if not verify_password(password, user.hashed_password):
         return None

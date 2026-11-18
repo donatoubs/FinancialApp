@@ -26,7 +26,16 @@ class Settings(BaseSettings):
     # Seguridad y autenticación JWT
     SECRET_KEY: str = "cambiar_esta_clave_secreta_por_una_segura_en_produccion_123456789"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440     # tokens para la API (Swagger, integraciones)
+    SESSION_HOURS: int = 12                     # sesión web sin "mantener la sesión iniciada"
+    SESSION_REMEMBER_DAYS: int = 30             # sesión web con "mantener la sesión iniciada"
+
+    # Administración: correos (separados por coma) que tienen acceso al panel /admin.
+    # Se aplica al arrancar: quien no esté en la lista pierde el acceso.
+    ADMIN_EMAILS: str = ""
+
+    # Registro de actividad: días que se guardan los eventos de seguridad
+    SECURITY_EVENTS_RETENTION_DAYS: int = 90
 
     # Detrás de un proxy (Render, Docker con Nginx): confiar en la última IP de X-Forwarded-For
     TRUST_PROXY: bool = False
@@ -51,6 +60,10 @@ class Settings(BaseSettings):
         if self.is_production and "*" in origins:
             return [o for o in origins if o != "*"]
         return origins
+
+    @property
+    def admin_emails(self) -> List[str]:
+        return [e.strip().lower() for e in self.ADMIN_EMAILS.split(",") if e.strip()]
 
     @property
     def is_production(self) -> bool:

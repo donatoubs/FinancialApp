@@ -15,7 +15,7 @@ class AccountBase(BaseModel):
     account_type: AccountType = Field(default=AccountType.CHECKING, description="Tipo de cuenta")
     account_number_mask: Optional[str] = Field(None, max_length=30, description="Número de cuenta parcialmente oculto", examples=["****1234"])
     currency: str = Field(default="USD", min_length=3, max_length=3, description="Código de moneda ISO", examples=["USD"])
-    color: str = Field(default="#2563eb", max_length=20, description="Color hexadecimal para identificación visual", examples=["#2563eb"])
+    color: str = Field(default="#2563eb", max_length=7, pattern=r"^#[0-9A-Fa-f]{6}$", description="Color hexadecimal para identificación visual", examples=["#2563eb"])
     is_active: bool = Field(default=True, description="Estado activo o inactivo de la cuenta")
 
 
@@ -31,7 +31,7 @@ class AccountUpdate(BaseModel):
     account_number_mask: Optional[str] = None
     current_balance: Optional[Decimal] = None
     currency: Optional[str] = Field(None, min_length=3, max_length=3)
-    color: Optional[str] = None
+    color: Optional[str] = Field(None, max_length=7, pattern=r"^#[0-9A-Fa-f]{6}$")
     is_active: Optional[bool] = None
 
 

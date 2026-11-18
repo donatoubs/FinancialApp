@@ -40,6 +40,13 @@
 .saved { font-size: 0.8125rem; color: var(--income); font-weight: 600; opacity: 0; transition: opacity .2s ease; }
 .saved.is-on { opacity: 1; }
 .danger-zone.is-confirming .confirm-stack { display: block; }
+.access-log { list-style: none; padding: 0; margin: 0; }
+.access-log li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 0.875rem; }
+.access-log li:last-child { border-bottom: 0; }
+.access-log .what { font-weight: 600; }
+.access-log .when { color: var(--ink-muted); font-size: 0.8125rem; white-space: nowrap; }
+.access-log .where { grid-column: 1 / -1; color: var(--ink-muted); font-size: 0.8125rem; }
+.access-log li.is-warn .what { color: var(--expense); }
 @media (max-width: 575.98px) { .kv { grid-template-columns: minmax(0, 1fr); gap: 2px; } .kv dd { margin-bottom: 10px; } }
 </style>
 {% endblock %}
@@ -144,9 +151,13 @@
                 </div>
             </div>
             <div class="block">
+                <h3>Historial de accesos</h3>
+                <p>Inicios de sesión y cambios de seguridad de tu cuenta. Si ves algo que no reconoces, cambia tu contraseña.</p>
+                <ul class="access-log" id="accessLog"><li class="text-muted small">Cargando…</li></ul>
+            </div>
+            <div class="block">
                 <div class="opt"><span class="t">Verificación en dos pasos <span class="pending-tag">Pendiente</span></span><span class="d">Aún no está disponible. Requiere agregar códigos de una app autenticadora.</span></div>
                 <div class="opt"><span class="t">Lista de sesiones activas <span class="pending-tag">Pendiente</span></span><span class="d">La app no registra dispositivos todavía; por eso solo puedes cerrarlas todas a la vez.</span></div>
-                <div class="opt"><span class="t">Historial de accesos <span class="pending-tag">Pendiente</span></span><span class="d">Los inicios de sesión aún no se guardan.</span></div>
             </div>
         </section>
 
@@ -254,7 +265,7 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 let me = null;
 
 // ------------------------------------------------------------ Navegación interna (#seccion)
@@ -434,7 +445,36 @@ setupDangerZone(document.getElementById('deleteZone'), async () => {
     showAlert('danger', message);
 });
 
+// ------------------------------------------------------------ Historial de accesos
+function deviceName(ua) {
+    if (!ua) return 'Dispositivo desconocido';
+    const os = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android'
+        : /Windows/.test(ua) ? 'Windows' : /Mac OS X/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : 'otro dispositivo';
+    const browser = /Edg\//.test(ua) ? 'Edge' : /CriOS|Chrome\//.test(ua) ? 'Chrome' : /FxiOS|Firefox\//.test(ua) ? 'Firefox'
+        : /Safari\//.test(ua) ? 'Safari' : /Shortcuts|CFNetwork/.test(ua) ? 'Atajos' : '';
+    return browser ? `${browser} en ${os}` : os;
+}
+async function loadAccessLog() {
+    const box = document.getElementById('accessLog');
+    try {
+        const res = await authFetch('/api/v1/auth/me/activity');
+        const events = res.ok ? await res.json() : [];
+        if (!events.length) { box.innerHTML = '<li class="text-muted small">Todavía no hay actividad registrada.</li>'; return; }
+        box.innerHTML = events.map(e => {
+            const d = new Date(e.created_at);
+            const when = `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} · ${fmtTime(e.created_at)}`;
+            return `<li class="${e.severity !== 'info' ? 'is-warn' : ''}">
+                <span class="what">${esc(e.label)}</span><span class="when">${esc(when)}</span>
+                <span class="where">${esc(deviceName(e.user_agent))}${e.ip ? ' · IP ' + esc(e.ip) : ''}${e.detail ? ' · ' + esc(e.detail) : ''}</span>
+            </li>`;
+        }).join('');
+    } catch (err) {
+        box.innerHTML = '<li class="text-muted small">No se pudo cargar el historial.</li>';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    loadAccessLog();
     showPane();
     paintPrefs();
     loadMe();

@@ -58,9 +58,21 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     return encoded_jwt
 
 
-def issue_token(user) -> str:
+def issue_token(user, expires_delta: Optional[timedelta] = None, remember: bool = True) -> str:
     """Token de sesión del usuario; incluye la versión de sesión para poder invalidarlo."""
-    return create_access_token(data={"sub": str(user.id), "email": user.email, "tv": user.token_version or 0})
+    return create_access_token(
+        data={"sub": str(user.id), "tv": user.token_version or 0, "rm": bool(remember)},
+        expires_delta=expires_delta,
+    )
+
+
+# Hash de relleno: si el correo no existe se verifica igual contra este hash, para que la respuesta
+# tarde lo mismo y no se pueda averiguar qué correos están registrados midiendo el tiempo.
+_DUMMY_HASH = bcrypt.hashpw(b"dummy-password-for-timing", bcrypt.gensalt(rounds=12)).decode()
+
+
+def burn_password_check(plain_password: str) -> None:
+    verify_password(plain_password, _DUMMY_HASH)
 
 
 def decode_access_token(token: str) -> Optional[Dict[str, Any]]:

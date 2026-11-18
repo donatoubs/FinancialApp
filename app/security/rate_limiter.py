@@ -99,3 +99,6 @@ failed_login_limiter = InMemoryRateLimiter(5, 15 * 60, "Demasiados intentos fall
 
 # 60 pagos por minuto y por IP desde los atajos del iPhone
 webhook_rate_limiter = InMemoryRateLimiter(60, 60, "Demasiados envíos desde el atajo.")
+
+# 10 tokens del atajo inválidos por IP en 15 minutos bloquean esa IP (evita adivinar tokens)
+webhook_bad_token_limiter = InMemoryRateLimiter(10, 15 * 60, "Demasiados tokens inválidos.")

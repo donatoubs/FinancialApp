@@ -1,0 +1,276 @@
+{% extends "app.html" %}
+
+{% block title %}Administración · FinancialApp{% endblock %}
+
+{% block extra_head %}
+<style>
+.adm-nav { display: flex; gap: 0; overflow-x: auto; border-bottom: 1px solid var(--rule-strong); margin: 0 -16px 28px; padding: 0 16px; scrollbar-width: none; }
+.adm-nav a { flex: none; padding: 10px 12px; color: var(--ink-muted); text-decoration: none; font-weight: 600; font-size: 0.875rem; border-bottom: 2px solid transparent; white-space: nowrap; }
+.adm-nav a.is-active { color: var(--ink); border-bottom-color: var(--accent); }
+@media (min-width: 992px) { .adm-nav { margin: 0 0 32px; padding: 0; } }
+.adm-pane[hidden] { display: none; }
+.stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--rule-strong); }
+@media (min-width: 768px) { .stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.stat { padding: 16px 16px 18px 0; border-bottom: 1px solid var(--rule); }
+.stat dt { font-size: 0.8125rem; color: var(--ink-muted); font-weight: 600; }
+.stat dd { margin: 4px 0 0; font-size: 1.75rem; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.stat dd.is-warn { color: var(--expense); }
+.adm-h { font-size: 0.9375rem; font-weight: 700; margin: 32px 0 4px; }
+.adm-sub { color: var(--ink-muted); font-size: 0.875rem; margin: 0 0 12px; }
+.ev-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule-strong); }
+.ev { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; gap: 2px 12px; padding: 11px 0; border-bottom: 1px solid var(--rule); font-size: 0.875rem; align-items: baseline; }
+.ev .t { color: var(--ink-muted); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+.ev .w { font-weight: 600; }
+.ev .who { grid-column: 2 / -1; color: var(--ink-muted); font-size: 0.8125rem; overflow-wrap: anywhere; }
+.ev .sev { font-size: 0.6875rem; font-weight: 700; border-radius: var(--radius-sm); padding: 1px 6px; border: 1px solid var(--rule-strong); color: var(--ink-muted); }
+.ev.is-warning .w { color: var(--expense); }
+.ev.is-critical .w { color: var(--expense); }
+.ev.is-critical .sev { background: var(--expense); border-color: var(--expense); color: #fff; }
+.ev.is-warning .sev { border-color: var(--expense); color: var(--expense); }
+.u-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule-strong); }
+.u-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+.u-row .n { font-weight: 700; }
+.u-row .m { color: var(--ink-muted); font-size: 0.8125rem; overflow-wrap: anywhere; }
+.u-row .acts { display: flex; gap: 6px; align-items: start; flex-wrap: wrap; justify-content: flex-end; }
+.u-tag { display: inline-block; font-size: 0.6875rem; font-weight: 700; border-radius: var(--radius-sm); padding: 1px 6px; border: 1px solid var(--rule-strong); color: var(--ink-muted); margin-left: 6px; vertical-align: 1px; }
+.u-tag.is-off { border-color: var(--expense); color: var(--expense); }
+.u-tag.is-admin { border-color: var(--accent); color: var(--accent-ink); }
+.ip-table { width: 100%; font-size: 0.875rem; border-top: 1px solid var(--rule-strong); }
+.ip-table th { font-size: 0.75rem; color: var(--ink-muted); font-weight: 600; padding: 8px 8px 8px 0; border-bottom: 1px solid var(--rule); text-align: left; }
+.ip-table td { padding: 10px 8px 10px 0; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
+.ip-table td.num, .ip-table th.num { text-align: right; }
+.empty-note { color: var(--ink-muted); font-size: 0.875rem; padding: 14px 0; border-top: 1px solid var(--rule-strong); }
+.adm-tools { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.adm-tools .form-control, .adm-tools .form-select { max-width: 280px; }
+@media (max-width: 575.98px) {
+    .ev { grid-template-columns: minmax(0, 1fr) auto; }
+    .ev .t { grid-column: 1 / -1; order: -1; }
+    .ev .who { grid-column: 1 / -1; }
+    .u-row { grid-template-columns: minmax(0, 1fr); }
+    .u-row .acts { justify-content: flex-start; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Administración</h1>
+        <p>Cuentas, actividad sospechosa y estado de la app. Por privacidad no se muestran montos de nadie.</p>
+    </div>
+</div>
+
+<div id="globalAlert" class="alert d-none" role="alert"></div>
+
+<nav class="adm-nav" aria-label="Secciones de administración">
+    <a href="#resumen" data-pane="resumen">Resumen</a>
+    <a href="#sospechosa" data-pane="sospechosa">Actividad sospechosa</a>
+    <a href="#cuentas" data-pane="cuentas">Cuentas</a>
+    <a href="#registro" data-pane="registro">Registro completo</a>
+</nav>
+
+<!-- RESUMEN -->
+<section class="adm-pane" id="pane-resumen" aria-label="Resumen">
+    <dl class="stat-grid" id="statsUsers"></dl>
+    <h2 class="adm-h">Datos</h2>
+    <dl class="stat-grid" id="statsData"></dl>
+    <h2 class="adm-h">Seguridad · últimas 24 horas</h2>
+    <dl class="stat-grid" id="statsSec"></dl>
+</section>
+
+<!-- ACTIVIDAD SOSPECHOSA -->
+<section class="adm-pane" id="pane-sospechosa" aria-label="Actividad sospechosa" hidden>
+    <h2 class="adm-h mt-0">IPs con más alertas · últimos 7 días</h2>
+    <p class="adm-sub">Muchas alertas de una IP o una IP que prueba varias cuentas suele ser un ataque de fuerza bruta. Ya se bloquean solas por un tiempo.</p>
+    <div id="ipTable"></div>
+    <h2 class="adm-h">Alertas recientes</h2>
+    <p class="adm-sub">Contraseñas incorrectas, bloqueos, accesos desde IPs nuevas, tokens del atajo inválidos e intentos de entrar aquí sin permiso.</p>
+    <ul class="ev-list" id="suspiciousList"></ul>
+</section>
+
+<!-- CUENTAS -->
+<section class="adm-pane" id="pane-cuentas" aria-label="Cuentas" hidden>
+    <div class="adm-tools">
+        <input type="search" class="form-control form-control-sm" id="userSearch" placeholder="Buscar por nombre, correo o celular" aria-label="Buscar cuentas" maxlength="100">
+    </div>
+    <p class="adm-sub" id="userCount"></p>
+    <ul class="u-list" id="userList"></ul>
+</section>
+
+<!-- REGISTRO -->
+<section class="adm-pane" id="pane-registro" aria-label="Registro completo" hidden>
+    <div class="adm-tools">
+        <select class="form-select form-select-sm" id="evSeverity" aria-label="Tipo de evento">
+            <option value="">Todos los eventos</option>
+            <option value="suspicious">Solo alertas</option>
+            <option value="critical">Solo críticos</option>
+            <option value="info">Solo normales</option>
+        </select>
+        <input type="search" class="form-control form-control-sm" id="evSearch" placeholder="Correo o IP" aria-label="Buscar por correo o IP" maxlength="100">
+    </div>
+    <ul class="ev-list" id="eventList"></ul>
+</section>
+
+<!-- Confirmación de acciones sobre cuentas -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h2 class="modal-title fs-5" id="confirmTitle">Confirmar</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+            <div class="modal-body"><p id="confirmText" class="mb-0"></p></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmGo">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ csp_nonce }}">
+const API = '/api/v1/admin';
+
+function showPane() {
+    const key = (location.hash || '#resumen').slice(1);
+    const valid = document.getElementById(`pane-${key}`) ? key : 'resumen';
+    document.querySelectorAll('.adm-pane').forEach(p => { p.hidden = p.id !== `pane-${valid}`; });
+    document.querySelectorAll('.adm-nav a').forEach(a => {
+        const on = a.dataset.pane === valid;
+        a.classList.toggle('is-active', on);
+        if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+    ({ resumen: loadOverview, sospechosa: loadSuspicious, cuentas: loadUsers, registro: loadEvents })[valid]();
+}
+window.addEventListener('hashchange', showPane);
+
+function when(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} ${fmtTime(iso)}`;
+}
+function device(ua) {
+    if (!ua) return '';
+    const os = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android'
+        : /Windows/.test(ua) ? 'Windows' : /Mac OS X/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : '';
+    const br = /Edg\//.test(ua) ? 'Edge' : /CriOS|Chrome\//.test(ua) ? 'Chrome' : /FxiOS|Firefox\//.test(ua) ? 'Firefox'
+        : /Safari\//.test(ua) ? 'Safari' : /curl|python|httpx|Go-http|wget/i.test(ua) ? 'Script automático' : '';
+    return [br, os].filter(Boolean).join(' en ') || ua.slice(0, 40);
+}
+const SEV = { info: 'Normal', warning: 'Alerta', critical: 'Crítico' };
+
+function stats(el, items) {
+    document.getElementById(el).innerHTML = items.map(([label, value, warn]) =>
+        `<div class="stat"><dt>${esc(label)}</dt><dd class="${warn && value > 0 ? 'is-warn' : ''}">${Number(value).toLocaleString('es-EC')}</dd></div>`).join('');
+}
+
+async function loadOverview() {
+    const res = await authFetch(`${API}/overview`);
+    if (!res.ok) return showAlert('danger', 'No se pudo cargar el resumen.');
+    const o = await res.json();
+    stats('statsUsers', [['Cuentas', o.users.total], ['Activas', o.users.active], ['Nuevas (7 días)', o.users.new_7d], ['Entraron (30 días)', o.users.active_30d]]);
+    stats('statsData', [['Movimientos', o.data.transactions], ['Movimientos (7 días)', o.data.transactions_7d], ['Cuentas bancarias', o.data.accounts], ['Pagos por confirmar', o.data.pending]]);
+    stats('statsSec', [['Inicios de sesión', o.security_24h.logins], ['Contraseñas incorrectas', o.security_24h.failed_logins, true],
+        ['Bloqueos', o.security_24h.lockouts, true], ['Alertas', o.security_24h.suspicious, true]]);
+}
+
+function eventRow(e) {
+    return `<li class="ev is-${esc(e.severity)}">
+        <span class="t">${esc(when(e.created_at))}</span>
+        <span class="w">${esc(e.label)}</span>
+        <span class="sev">${esc(SEV[e.severity] || e.severity)}</span>
+        <span class="who">${esc(e.email || 'Sin cuenta')} · IP ${esc(e.ip || '—')}${e.user_agent ? ' · ' + esc(device(e.user_agent)) : ''}${e.detail ? ' · ' + esc(e.detail) : ''}</span>
+    </li>`;
+}
+
+async function loadSuspicious() {
+    const [ipsRes, evRes] = await Promise.all([authFetch(`${API}/suspicious-ips`), authFetch(`${API}/events?severity=suspicious&limit=100`)]);
+    const ips = ipsRes.ok ? await ipsRes.json() : [];
+    const evs = evRes.ok ? await evRes.json() : [];
+    document.getElementById('ipTable').innerHTML = ips.length
+        ? `<table class="ip-table"><thead><tr><th>IP</th><th class="num">Alertas</th><th class="num">Cuentas probadas</th><th>Última</th></tr></thead><tbody>${
+            ips.map(i => `<tr><td>${esc(i.ip)}</td><td class="num">${i.events}</td><td class="num">${i.accounts}</td><td>${esc(when(i.last))}</td></tr>`).join('')}</tbody></table>`
+        : '<p class="empty-note">Sin alertas en los últimos 7 días.</p>';
+    document.getElementById('suspiciousList').innerHTML = evs.length ? evs.map(eventRow).join('') : '<li class="empty-note">No hay alertas.</li>';
+}
+
+let searchTimer;
+async function loadUsers() {
+    const q = document.getElementById('userSearch').value.trim();
+    const res = await authFetch(`${API}/users?limit=200${q ? '&q=' + encodeURIComponent(q) : ''}`);
+    if (!res.ok) return showAlert('danger', 'No se pudieron cargar las cuentas.');
+    const { total, items } = await res.json();
+    document.getElementById('userCount').textContent = `${total} ${total === 1 ? 'cuenta' : 'cuentas'}${q ? ' encontradas' : ''}`;
+    document.getElementById('userList').innerHTML = items.map(u => {
+        // Cuentas de administrador (incluida la tuya) no se pueden desactivar desde aquí
+        const acts = u.is_superuser ? '' : `
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-act="logout" data-id="${Number(u.id)}" data-name="${esc(u.full_name)}">Cerrar sesiones</button>
+            ${u.is_active
+                ? `<button type="button" class="btn btn-outline-danger btn-sm" data-act="deactivate" data-id="${Number(u.id)}" data-name="${esc(u.full_name)}">Desactivar</button>`
+                : `<button type="button" class="btn btn-outline-secondary btn-sm" data-act="activate" data-id="${Number(u.id)}" data-name="${esc(u.full_name)}">Reactivar</button>`}`;
+        return `<li class="u-row">
+            <div>
+                <span class="n">${esc(u.full_name)}</span>${u.is_superuser ? '<span class="u-tag is-admin">Admin</span>' : ''}${u.is_active ? '' : '<span class="u-tag is-off">Desactivada</span>'}
+                <div class="m">${esc(u.email)}${u.phone ? ' · ' + esc(u.phone) : ''}</div>
+                <div class="m">Creada ${esc(when(u.created_at))} · Último acceso ${esc(when(u.last_login_at))} · ${Number(u.transactions)} movimientos</div>
+            </div>
+            <div class="acts">${acts}</div>
+        </li>`;
+    }).join('') || '<li class="empty-note">Sin resultados.</li>';
+}
+
+async function loadEvents() {
+    const sev = document.getElementById('evSeverity').value;
+    const q = document.getElementById('evSearch').value.trim();
+    const params = new URLSearchParams({ limit: '300' });
+    if (sev) params.set('severity', sev);
+    if (q) params.set('q', q);
+    const res = await authFetch(`${API}/events?${params}`);
+    const evs = res.ok ? await res.json() : [];
+    document.getElementById('eventList').innerHTML = evs.length ? evs.map(eventRow).join('') : '<li class="empty-note">Sin eventos.</li>';
+}
+
+// Acciones sobre cuentas, siempre con confirmación
+const ACTIONS = {
+    deactivate: { title: 'Desactivar cuenta', text: n => `${n} no podrá entrar y se cerrarán todas sus sesiones. Sus datos se conservan y puedes reactivarla cuando quieras.`, btn: 'Desactivar', cls: 'btn-danger' },
+    activate: { title: 'Reactivar cuenta', text: n => `${n} podrá volver a iniciar sesión.`, btn: 'Reactivar', cls: 'btn-primary' },
+    logout: { title: 'Cerrar sesiones', text: n => `Se cerrarán todas las sesiones abiertas de ${n}. Tendrá que volver a iniciar sesión.`, btn: 'Cerrar sesiones', cls: 'btn-primary' },
+};
+let pending = null;
+document.getElementById('userList').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const a = ACTIONS[btn.dataset.act];
+    pending = { act: btn.dataset.act, id: Number(btn.dataset.id) };
+    document.getElementById('confirmTitle').textContent = a.title;
+    document.getElementById('confirmText').textContent = a.text(btn.dataset.name);
+    const go = document.getElementById('confirmGo');
+    go.textContent = a.btn;
+    go.className = `btn ${a.cls}`;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal')).show();
+});
+document.getElementById('confirmGo').addEventListener('click', async (e) => {
+    if (!pending) return;
+    setLoading(e.currentTarget, true, 'Aplicando…');
+    try {
+        const res = await authFetch(`${API}/users/${pending.id}/${pending.act}`, { method: 'POST' });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(apiError(data, 'No se pudo aplicar la acción.'));
+        showAlert('success', 'Listo.');
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal')).hide();
+        loadUsers();
+    } catch (err) {
+        showAlert('danger', err.message);
+    } finally {
+        setLoading(e.currentTarget, false);
+        pending = null;
+    }
+});
+
+document.getElementById('userSearch').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(loadUsers, 300); });
+document.getElementById('evSeverity').addEventListener('change', loadEvents);
+document.getElementById('evSearch').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(loadEvents, 300); });
+
+document.addEventListener('DOMContentLoaded', showPane);
+</script>
+{% endblock %}

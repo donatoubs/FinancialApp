@@ -53,8 +53,8 @@
         <p>Ingresos, gastos, transferencias y pagos de tarjeta.</p>
     </div>
     <div class="page-actions">
-        <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#categoriesModal" onclick="loadCategoriesList()">Categorías</button>
-        <button class="btn btn-primary tx-new" onclick="prepareCreateModal()">
+        <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#categoriesModal" id="categoriesBtn">Categorías</button>
+        <button class="btn btn-primary tx-new" id="newTxBtn">
             <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Nuevo movimiento
         </button>
     </div>
@@ -79,7 +79,7 @@
     <button type="button" class="btn btn-outline-secondary btn-sm tx-toggle" id="filtersToggle" aria-expanded="false"><i class="bi bi-sliders me-1" aria-hidden="true"></i>Filtros</button>
     <div class="wide tx-adv">
     <label class="form-label" for="filterTxType">Tipo</label>
-    <select class="form-select form-select-sm" id="filterTxType" onchange="loadTransactions()">
+    <select class="form-select form-select-sm" id="filterTxType">
         <option value="">Todos los tipos</option>
         <option value="income">Ingresos</option>
         <option value="expense">Gastos</option>
@@ -89,19 +89,19 @@
     </div>
     <div class="wide tx-adv">
     <label class="form-label" for="filterCategory">Categoría</label>
-    <select class="form-select form-select-sm" id="filterCategory" onchange="loadTransactions()">
+    <select class="form-select form-select-sm" id="filterCategory">
         <option value="">Todas</option>
     </select>
     </div>
     <div class="tx-adv">
     <label class="form-label" for="filterStartDate">Desde</label>
-    <input type="date" class="form-control form-control-sm" id="filterStartDate" onchange="loadTransactions()">
+    <input type="date" class="form-control form-control-sm" id="filterStartDate">
     </div>
     <div class="tx-adv">
     <label class="form-label" for="filterEndDate">Hasta</label>
-    <input type="date" class="form-control form-control-sm" id="filterEndDate" onchange="loadTransactions()">
+    <input type="date" class="form-control form-control-sm" id="filterEndDate">
     </div>
-    <button class="btn btn-outline-secondary btn-sm wide tx-adv" onclick="clearFilters()">Limpiar filtros</button>
+    <button class="btn btn-outline-secondary btn-sm wide tx-adv" id="clearFiltersBtn">Limpiar filtros</button>
 </div>
 
 <a class="pending-note" href="/pending" id="pendingNote" hidden></a>
@@ -257,7 +257,18 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
+
+// Eventos (sin atributos onclick: la política de seguridad los bloquea)
+document.getElementById('categoriesBtn').addEventListener('click', () => loadCategoriesList());
+document.getElementById('newTxBtn').addEventListener('click', () => prepareCreateModal());
+['filterTxType', 'filterCategory', 'filterStartDate', 'filterEndDate'].forEach(id =>
+    document.getElementById(id).addEventListener('change', () => loadTransactions()));
+document.getElementById('clearFiltersBtn').addEventListener('click', () => clearFilters());
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-delete-category]');
+    if (btn) deleteCategory(Number(btn.dataset.deleteCategory));
+});
 let allTransactions = [];
 let allAccounts = [];
 let allCards = [];
@@ -639,8 +650,8 @@ async function loadCategoriesList() {
                 <div class="col-md-6">
                     <div class="p-2 border rounded-3 d-flex justify-content-between align-items-center bg-white">
                         <div class="d-flex align-items-center">
-                            <span class="p-2 rounded-2 me-2" style="background-color: ${c.color}20; color: ${c.color};">
-                                <i class="bi ${c.icon}"></i>
+                            <span class="p-2 rounded-2 me-2" style="background-color: ${esc(c.color)}20; color: ${esc(c.color)};">
+                                <i class="bi ${esc(c.icon)}"></i>
                             </span>
                             <div>
                                 <span class="fw-semibold small d-block">${esc(c.name)}</span>
@@ -650,7 +661,7 @@ async function loadCategoriesList() {
                             </div>
                         </div>
                         ${!c.is_default ? `
-                        <button class="btn btn-outline-danger btn-sm p-1 rounded-2" onclick="deleteCategory(${c.id})" title="Eliminar">
+                        <button class="btn btn-outline-danger btn-sm p-1 rounded-2" data-delete-category="${Number(c.id)}" title="Eliminar">
                             <i class="bi bi-trash3"></i>
                         </button>` : '<span class="badge bg-light text-secondary very-small border">Sistema</span>'}
                     </div>

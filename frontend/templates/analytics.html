@@ -103,7 +103,7 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 const monthSel = document.getElementById('monthSelect');
 const yearSel = document.getElementById('yearSelect');
 

@@ -6,43 +6,32 @@
 
 const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/reset-password', '/terms'];
 
-// La sesión vive en localStorage ("mantener la sesión iniciada") o en sessionStorage (se cierra con el navegador)
-function sessionStore() {
-    return localStorage.getItem('financial_token') ? localStorage : sessionStorage;
-}
-let token = sessionStore().getItem('financial_token');
-const user = JSON.parse(sessionStore().getItem('financial_user') || '{}');
+/*
+ * Sesión: vive en una cookie HttpOnly que pone el servidor. JavaScript no puede leerla, así que un
+ * script malicioso no puede robar la sesión. Aquí solo se guarda lo necesario para mostrar el nombre.
+ * El servidor ya no envía las páginas privadas sin sesión válida (redirige al login).
+ */
+const user = Object.assign({}, window.APP_USER || {});
 
-function saveSession(newToken, newUser, remember) {
-    clearSession();
-    const store = remember ? localStorage : sessionStorage;
-    store.setItem('financial_token', newToken);
-    if (newUser) store.setItem('financial_user', JSON.stringify(newUser));
-}
+// Limpia lo que guardaban versiones anteriores (token en el navegador)
+['financial_token', 'financial_user'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); });
 
-/** Reemplaza el token de la sesión actual (p. ej. tras cambiar la contraseña). */
-function replaceToken(newToken) {
-    sessionStore().setItem('financial_token', newToken);
-    token = newToken;
-}
+/** Compatibilidad: el token ya no se guarda en el navegador. */
+function saveSession() {}
+function replaceToken() {}
+function clearSession() {}
 
 function saveUser(newUser) {
-    sessionStore().setItem('financial_user', JSON.stringify(newUser));
     Object.assign(user, newUser);
     document.querySelectorAll('[data-user-name]').forEach(el => { el.textContent = newUser.full_name; });
 }
 
-function clearSession() {
-    ['financial_token', 'financial_user'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); });
-}
-
-if (!PUBLIC_PATHS.includes(window.location.pathname) && !token) {
-    window.location.replace('/login');
-}
-
-function logout() {
-    clearSession();
-    window.location.href = '/login';
+async function logout() {
+    try {
+        await fetch('/api/v1/auth/logout', { method: 'POST', headers: { 'X-Requested-With': 'FinancialApp' } });
+    } finally {
+        window.location.href = '/login';
+    }
 }
 
 /** Valida un formulario con los mensajes de cada campo; marca errores y aciertos. */
@@ -78,12 +67,16 @@ function setLoading(btn, loading, text) {
     }
 }
 
-/** fetch con el token del usuario; si la sesión expiró vuelve al login. */
+/**
+ * fetch de la app: envía la cookie de sesión y la cabecera X-Requested-With (el servidor rechaza
+ * cambios con cookie que no la traigan: protección contra CSRF). Si la sesión expiró vuelve al login.
+ */
 async function authFetch(url, options = {}) {
-    options.headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
+    options.headers = { ...options.headers, 'X-Requested-With': 'FinancialApp' };
+    options.credentials = 'same-origin';
     const res = await fetch(url, options);
     if (res.status === 401) {
-        logout();
+        window.location.href = '/login';
         throw new Error('Tu sesión expiró. Vuelve a iniciar sesión.');
     }
     return res;
@@ -242,7 +235,7 @@ function bindPasswordToggle(buttonId, inputId) {
 
 /** Actualiza los contadores de pagos pendientes del iPhone en la navegación. */
 async function refreshPendingBadge() {
-    if (!token) return;
+    if (!window.APP_USER) return;
     try {
         const res = await authFetch('/api/v1/pending/count');
         if (!res.ok) return;
@@ -258,7 +251,7 @@ async function refreshPendingBadge() {
 // Shell de la app: usuario, salir, perfil
 // -----------------------------------------------------------------------------
 function initShell() {
-    document.querySelectorAll('[data-user-name]').forEach(el => { el.textContent = user.full_name || 'Usuario'; });
+    if (user.full_name) document.querySelectorAll('[data-user-name]').forEach(el => { el.textContent = user.full_name; });
     document.querySelectorAll('[data-action="logout"]').forEach(el => el.addEventListener('click', logout));
     applyPreferences();
     refreshPendingBadge();
@@ -290,4 +283,9 @@ function setupDangerZone(zone, onConfirm) {
     };
 }
 
+// Los modales viven al final de <body>: un contenedor con transform/animación los dejaría
+// debajo del fondo oscuro (la pantalla se ve gris y "trabada").
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.modal').forEach(m => { if (m.parentElement !== document.body) document.body.appendChild(m); });
+}, { once: true });
 document.addEventListener('DOMContentLoaded', initShell);

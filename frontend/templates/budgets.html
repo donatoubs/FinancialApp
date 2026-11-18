@@ -30,12 +30,12 @@
     </div>
     <div class="page-actions">
         <div class="period">
-            <select class="form-select form-select-sm" id="budgetMonthSelect" aria-label="Mes" onchange="loadBudgets()">
+            <select class="form-select form-select-sm" id="budgetMonthSelect" aria-label="Mes">
                 {% for m in months %}<option value="{{ loop.index }}">{{ m }}</option>{% endfor %}
             </select>
-            <select class="form-select form-select-sm" id="budgetYearSelect" aria-label="Año" onchange="loadBudgets()"></select>
+            <select class="form-select form-select-sm" id="budgetYearSelect" aria-label="Año"></select>
         </div>
-        <button class="btn btn-primary" onclick="openBudgetModal()"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Nuevo presupuesto</button>
+        <button class="btn btn-primary" id="newBudgetBtn"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Nuevo presupuesto</button>
     </div>
 </div>
 
@@ -79,7 +79,7 @@
                 <option value="card_payment">Pagos de tarjeta</option>
             </select>
         </div>
-        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="downloadCsvReport()"><i class="bi bi-download me-1" aria-hidden="true"></i>Descargar CSV</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="csvReportBtn"><i class="bi bi-download me-1" aria-hidden="true"></i>Descargar CSV</button>
     </div>
 </section>
 
@@ -138,7 +138,13 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
+
+// Eventos (sin atributos onclick: la política de seguridad los bloquea)
+document.getElementById('budgetMonthSelect').addEventListener('change', () => loadBudgets());
+document.getElementById('budgetYearSelect').addEventListener('change', () => loadBudgets());
+document.getElementById('newBudgetBtn').addEventListener('click', () => openBudgetModal());
+document.getElementById('csvReportBtn').addEventListener('click', () => downloadCsvReport());
 let allCategories = [];
 let budgets = [];
 

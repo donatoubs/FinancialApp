@@ -212,7 +212,7 @@ body.app { min-height: 100dvh; }
 .sheet-link i { color: var(--ink-muted); font-size: 1.1rem; width: 20px; text-align: center; }
 .sheet-link-danger, .sheet-link-danger i { color: var(--expense); }
 
-.page { padding: 24px 16px calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 32px); animation: page-in .35s var(--ease-out) both; }
+.page { padding: 24px 16px calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 32px); animation: page-in .35s var(--ease-out) backwards; }
 .page > .container, .page > .container-fluid { max-width: 1280px; padding: 0; margin: 0 auto; }
 @keyframes page-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 

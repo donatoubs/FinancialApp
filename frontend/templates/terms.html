@@ -33,6 +33,9 @@
     <p>Las contraseñas se guardan cifradas. Usa una contraseña que no repitas en otros sitios y cierra la sesión en dispositivos que no sean tuyos.</p>
 
     <p class="doc-note">Este texto describe cómo funciona la app hoy. Quien la administra puede actualizarlo; los cambios se publicarán en esta página.</p>
-    <p><a href="javascript:history.back()"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Volver</a></p>
+    <p><a href="/login" id="backLink"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Volver</a></p>
+    <script nonce="{{ csp_nonce }}">
+    document.getElementById('backLink').addEventListener('click', (e) => { if (history.length > 1) { e.preventDefault(); history.back(); } });
+    </script>
 </main>
 {% endblock %}

@@ -13,8 +13,8 @@ from app.database import get_db
 from app.models.user import User
 from app.auth.dependencies import get_current_active_user
 from app.schemas.webhook import IOSWebhookPayload, WebhookResponse, WebhookTokenResponse
-from app.security.rate_limiter import webhook_rate_limiter
-from app.services import webhook_service
+from app.security.rate_limiter import client_ip, webhook_bad_token_limiter, webhook_rate_limiter
+from app.services import security_events, webhook_service
 
 router = APIRouter(prefix="/webhooks", tags=["Webhooks & Atajos iOS"])
 
@@ -46,8 +46,12 @@ def handle_ios_webhook(
             detail=f"Falta la cabecera {TOKEN_HEADER}. Agrégala en la acción 'Obtener contenido de URL' del atajo."
         )
 
+    # Una IP que prueba tokens inválidos queda bloqueada un rato (impide adivinarlos)
+    webhook_bad_token_limiter.ensure_allowed(client_ip(request))
     user = webhook_service.get_user_by_webhook_token(db=db, token=x_webhook_token.strip())
     if not user:
+        security_events.record(db, request, "webhook_bad_token")
+        webhook_bad_token_limiter.hit(client_ip(request))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido. Copia el token actual desde Pendientes ➝ Conecta tu iPhone."
@@ -84,4 +88,5 @@ def regenerate_my_webhook_token(
     db: Session = Depends(get_db)
 ):
     new_token = webhook_service.regenerate_webhook_token(db=db, user=current_user)
+    security_events.record(db, request, "webhook_token_regenerated", user=current_user)
     return WebhookTokenResponse(webhook_token=new_token, webhook_url=_webhook_url(request))

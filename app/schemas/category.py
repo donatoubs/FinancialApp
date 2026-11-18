@@ -9,8 +9,8 @@ from pydantic import BaseModel, Field, ConfigDict
 
 class CategoryBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="Nombre de la categoría", examples=["Alimentación"])
-    icon: str = Field(default="bi-tag", max_length=50, description="Icono de Bootstrap Icons", examples=["bi-cart3"])
-    color: str = Field(default="#2563eb", max_length=20, description="Color hexadecimal", examples=["#10b981"])
+    icon: str = Field(default="bi-tag", max_length=50, pattern=r"^bi-[a-z0-9-]+$", description="Icono de Bootstrap Icons", examples=["bi-cart3"])
+    color: str = Field(default="#2563eb", max_length=7, pattern=r"^#[0-9A-Fa-f]{6}$", description="Color hexadecimal", examples=["#10b981"])
     category_type: str = Field(default="expense", description="Tipo ('expense', 'income', o 'both')", examples=["expense"])
 
 
@@ -20,8 +20,8 @@ class CategoryCreate(CategoryBase):
 
 class CategoryUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
-    icon: Optional[str] = Field(None, max_length=50)
-    color: Optional[str] = None
+    icon: Optional[str] = Field(None, max_length=50, pattern=r"^bi-[a-z0-9-]+$")
+    color: Optional[str] = Field(None, max_length=7, pattern=r"^#[0-9A-Fa-f]{6}$")
     category_type: Optional[str] = None
 
 

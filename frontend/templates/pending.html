@@ -99,7 +99,7 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 const SEEN_KEY = 'financial_seen_pending';
 const SOURCES = { apple_pay: 'Apple Pay', deuna: 'DeUna', bank: 'Banco', sms: 'SMS' };
 let accounts = [], cards = [], categories = [], pendingById = {};

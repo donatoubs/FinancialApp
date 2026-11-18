@@ -20,13 +20,20 @@ for prefix in ("postgres://", "postgresql://"):
         db_url = "postgresql+psycopg2://" + db_url[len(prefix):]
         break
 
-# Configuración del motor de base de datos
+# En producción la conexión con PostgreSQL va cifrada (TLS) aunque la URL no lo pida
+connect_args = {}
+if db_url.startswith("postgresql") and settings.is_production and "sslmode=" not in db_url:
+    connect_args["sslmode"] = "require"
+
+# Pool pequeño: el pooler gratuito de Supabase admite pocas conexiones simultáneas
 engine = create_engine(
     db_url,
     pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-    echo=False  # Cambiar a True para debuguear consultas SQL detalladas
+    pool_size=5,
+    max_overflow=5,
+    pool_recycle=1800,
+    connect_args=connect_args,
+    echo=False,
 )
 
 # Generador de sesiones

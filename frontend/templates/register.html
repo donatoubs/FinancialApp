@@ -34,12 +34,12 @@
     <div class="field">
         <label for="password" class="form-label">Contraseña</label>
         <div class="input-group has-validation">
-            <input type="password" class="form-control" id="password" required minlength="8" autocomplete="new-password" aria-describedby="pwdHelp">
+            <input type="password" class="form-control" id="password" required minlength="8" maxlength="100" autocomplete="new-password" aria-describedby="pwdHelp">
             <button class="btn btn-outline-secondary" type="button" id="togglePassword" aria-label="Mostrar contraseña"><i class="bi bi-eye"></i></button>
-            <div class="invalid-feedback">Usa al menos 8 caracteres.</div>
+            <div class="invalid-feedback">Usa al menos 8 caracteres, con letras y números.</div>
         </div>
         <div class="pwd-meter" aria-hidden="true"><i></i><i></i><i></i></div>
-        <div class="form-text" id="pwdHelp">Mínimo 8 caracteres. Mejor si mezclas letras, números y símbolos.</div>
+        <div class="form-text" id="pwdHelp">Mínimo 8 caracteres, con letras y números. Mejor si agregas símbolos.</div>
     </div>
     <div class="field">
         <label for="confirmPassword" class="form-label">Repite la contraseña</label>
@@ -58,7 +58,7 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 bindPasswordToggle('togglePassword', 'password');
 const form = document.getElementById('registerForm');
 const pwd = form.password, confirmPwd = form.confirmPassword;
@@ -84,6 +84,7 @@ form.addEventListener('submit', async (e) => {
     const alertBox = document.getElementById('alertBox');
     alertBox.className = 'alert d-none';
     confirmPwd.setCustomValidity(confirmPwd.value !== pwd.value ? 'no coincide' : '');
+    pwd.setCustomValidity(/[A-Za-z]/.test(pwd.value) && /\d/.test(pwd.value) ? '' : 'letras y números');
     checkPhone();
     if (!validateFields(form)) return;
     const btn = document.getElementById('submitBtn');
@@ -102,7 +103,6 @@ form.addEventListener('submit', async (e) => {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(apiError(data, 'No se pudo crear la cuenta.'));
-        saveSession(data.token.access_token, data.user, true);
         window.location.href = '/dashboard';
     } catch (err) {
         alertBox.className = 'alert alert-danger';
