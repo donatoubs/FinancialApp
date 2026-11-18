@@ -36,6 +36,7 @@ def list_transactions(
     category_id: Optional[int] = Query(None, description="ID de la categoría"),
     account_id: Optional[int] = Query(None, description="ID de la cuenta bancaria"),
     card_id: Optional[int] = Query(None, description="ID de la tarjeta"),
+    q: Optional[str] = Query(None, max_length=100, description="Texto a buscar en descripción o notas"),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_active_user),
@@ -50,6 +51,7 @@ def list_transactions(
         category_id=category_id,
         account_id=account_id,
         card_id=card_id,
+        search=q,
         limit=limit,
         offset=offset
     )

@@ -188,6 +188,7 @@ def get_transactions_by_user(
     category_id: Optional[int] = None,
     account_id: Optional[int] = None,
     card_id: Optional[int] = None,
+    search: Optional[str] = None,
     limit: int = 100,
     offset: int = 0
 ) -> List[Transaction]:
@@ -210,6 +211,10 @@ def get_transactions_by_user(
         )
     if card_id:
         query = query.filter(Transaction.card_id == card_id)
+    if search and search.strip():
+        # Busca en la descripción y las notas, sin distinguir mayúsculas
+        pattern = f"%{search.strip()[:100]}%"
+        query = query.filter(Transaction.description.ilike(pattern) | Transaction.notes.ilike(pattern))
 
     return query.order_by(Transaction.transaction_date.desc(), Transaction.id.desc()).offset(offset).limit(limit).all()
 

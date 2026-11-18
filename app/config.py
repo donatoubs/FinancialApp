@@ -31,6 +31,15 @@ class Settings(BaseSettings):
     # Detrás de un proxy (Render, Docker con Nginx): confiar en la última IP de X-Forwarded-For
     TRUST_PROXY: bool = False
 
+    # Correo (recuperar contraseña). Vacío = envío desactivado.
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
+    SMTP_STARTTLS: bool = True
+    PUBLIC_BASE_URL: str = ""   # p. ej. https://financialapp.onrender.com (para los enlaces de los correos)
+
     # CORS: la app y la API comparten dominio, así que por defecto no se permite ningún otro origen.
     # Solo hace falta si otro sitio web va a llamar a esta API.
     ALLOWED_ORIGINS: str = ""

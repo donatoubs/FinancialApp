@@ -15,6 +15,9 @@ class User(Base):
     email = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(100), nullable=False)
+    phone = Column(String(30), nullable=True)
+    # Versión de sesión: al cambiarla (nueva contraseña, "cerrar sesiones") los tokens anteriores dejan de valer
+    token_version = Column(Integer, default=0, server_default="0", nullable=False)
     currency_preference = Column(String(3), default="USD", nullable=False)
     webhook_token = Column(String(64), unique=True, index=True, nullable=True)
     # Si es True, los pagos de comercios ya aprendidos se registran solos; el resto va a Pendientes

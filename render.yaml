@@ -7,6 +7,7 @@ services:
     buildCommand: pip install -r requirements.txt
     # --proxy-headers: Render termina HTTPS; así las URLs generadas usan https://
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'
+    healthCheckPath: /api/v1/health
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.3

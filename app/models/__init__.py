@@ -10,6 +10,7 @@ from app.models.category import Category
 from app.models.transaction import Transaction, TransactionType, PaymentMethod
 from app.models.budget import Budget
 from app.models.pending import PendingTransaction, MerchantRule, PendingStatus
+from app.models.password_reset import PasswordResetToken
 
 __all__ = [
     "Base",
@@ -25,5 +26,6 @@ __all__ = [
     "Budget",
     "PendingTransaction",
     "MerchantRule",
-    "PendingStatus"
+    "PendingStatus",
+    "PasswordResetToken"
 ]

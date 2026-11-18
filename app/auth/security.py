@@ -58,6 +58,11 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     return encoded_jwt
 
 
+def issue_token(user) -> str:
+    """Token de sesión del usuario; incluye la versión de sesión para poder invalidarlo."""
+    return create_access_token(data={"sub": str(user.id), "email": user.email, "tv": user.token_version or 0})
+
+
 def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
     """
     Decodifica y valida la firma y expiración de un token JWT.

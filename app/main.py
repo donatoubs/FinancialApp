@@ -15,7 +15,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import text
 
 from app.config import get_settings
-from app.routers import health, auth, accounts, cards, categories, transactions, dashboard, budgets, webhooks, pending
+from app.routers import health, auth, accounts, cards, categories, transactions, dashboard, budgets, webhooks, pending, analytics
 from app.database import engine, SessionLocal, Base, check_db_connection
 from app.services import category_service
 import app.models  # Asegura que todos los modelos ORM se registren
@@ -59,6 +59,8 @@ async def lifespan(app: FastAPI):
                         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS webhook_token VARCHAR(64);"))
                         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_webhook_token ON users (webhook_token);"))
                         conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS webhook_auto_confirm BOOLEAN NOT NULL DEFAULT TRUE;"))
+                        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(30);"))
+                        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0;"))
                         conn.commit()
                 except Exception as exc:
                     logger.error(f"Error aplicando migraciones de columnas: {exc}")
@@ -144,6 +146,9 @@ app.include_router(webhooks.router, prefix="/api/v1")
 # Router de la Bandeja de Pendientes en /api/v1/pending
 app.include_router(pending.router, prefix="/api/v1")
 
+# Router de Analíticas en /api/v1/analytics
+app.include_router(analytics.router, prefix="/api/v1")
+
 
 # ------------------------------------------------------------------------------
 # RUTAS DE INTERFAZ WEB (FRONTEND)
@@ -175,6 +180,11 @@ WEB_PAGES = {
     "/accounts": ("accounts.html", "accounts"),
     "/cards": ("cards.html", "cards"),
     "/budgets": ("budgets.html", "budgets"),
+    "/analytics": ("analytics.html", "analytics"),
+    "/settings": ("settings.html", "settings"),
+    "/forgot-password": ("forgot_password.html", ""),
+    "/reset-password": ("reset_password.html", ""),
+    "/terms": ("terms.html", ""),
 }
 for _path, (_template, _active) in WEB_PAGES.items():
     app.add_api_route(_path, _page(_template, _active), methods=["GET"],

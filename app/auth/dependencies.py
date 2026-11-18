@@ -45,6 +45,9 @@ def get_current_user(
     user = user_service.get_user_by_id(db, user_id=user_id)
     if user is None:
         raise credentials_exception
+    # Sesiones cerradas a distancia o tras cambiar la contraseña
+    if payload.get("tv", 0) != (user.token_version or 0):
+        raise credentials_exception
 
     return user
 
