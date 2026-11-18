@@ -78,3 +78,4 @@ def test_ip_real_detras_del_proxy_de_render(monkeypatch):
     assert ip("181.39.10.20, 10.28.117.134") == "181.39.10.20"            # cliente + proxy interno
     assert ip("1.2.3.4, 181.39.10.20, 10.27.84.217") == "181.39.10.20"     # la de la izquierda es inventable
     assert ip("10.1.1.1") == "10.0.0.9"                                     # sin IP pública: la conexión
+    assert ip("200.7.82.250, 172.71.150.187, 10.28.117.134") == "200.7.82.250"   # Cloudflare se salta

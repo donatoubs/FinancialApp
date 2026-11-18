@@ -22,11 +22,24 @@ from app.config import get_settings
 MAX_TRACKED_KEYS = 10_000   # evita que la memoria crezca sin límite
 
 
-def _is_public(ip: str) -> bool:
+# Render está detrás de Cloudflare: sus servidores aparecen en X-Forwarded-For y hay que saltarlos.
+# Rangos publicados en https://www.cloudflare.com/ips/
+_CLOUDFLARE_NETS = [ipaddress.ip_network(n) for n in (
+    "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22", "141.101.64.0/18",
+    "108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22", "198.41.128.0/17",
+    "162.158.0.0/15", "104.16.0.0/13", "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22",
+    "2400:cb00::/32", "2606:4700::/32", "2803:f800::/32", "2405:b500::/32", "2405:8100::/32",
+    "2a06:98c0::/29", "2c0f:f248::/32",
+)]
+
+
+def _is_client_candidate(ip: str) -> bool:
+    """IP pública que no es de la infraestructura (proxy interno de Render ni Cloudflare)."""
     try:
-        return ipaddress.ip_address(ip).is_global
+        addr = ipaddress.ip_address(ip)
     except ValueError:
         return False
+    return addr.is_global and not any(addr in net for net in _CLOUDFLARE_NETS)
 
 
 def client_ip(request: Request) -> str:
@@ -35,14 +48,14 @@ def client_ip(request: Request) -> str:
 
     Solo se mira X-Forwarded-For si TRUST_PROXY está activo (Render, Docker detrás de un proxy).
     La lista crece de izquierda a derecha y cada proxy agrega la IP de quien le habló:
-    "ip-falsa-del-cliente, ip-real-del-cliente, 10.x (proxy interno de Render)".
-    Se recorre desde la derecha y se toma la primera IP pública: las IPs internas son de la
-    infraestructura y las de más a la izquierda las puede inventar el cliente.
+    "ip-inventada, ip-real-del-cliente, ip-de-Cloudflare, 10.x (proxy interno de Render)".
+    Se recorre desde la derecha saltando IPs internas y de Cloudflare; la primera que queda es la
+    del cliente. Las de más a la izquierda las puede inventar el propio cliente.
     """
     if get_settings().TRUST_PROXY:
         forwarded = request.headers.get("X-Forwarded-For", "")
         for candidate in reversed([p.strip() for p in forwarded.split(",") if p.strip()]):
-            if _is_public(candidate):
+            if _is_client_candidate(candidate):
                 return candidate
     return request.client.host if request.client else "unknown"
 
