@@ -20,6 +20,7 @@ from app.schemas.budget import (
 )
 from app.auth.dependencies import get_current_active_user
 from app.services import budget_service
+from app.utils.dates import today_local
 
 router = APIRouter(prefix="/budgets", tags=["Presupuestos y Reportes"])
 
@@ -125,7 +126,7 @@ def export_transactions_csv(
         transaction_type=transaction_type
     )
 
-    filename = f"reporte_financiero_{date.today().isoformat()}.csv"
+    filename = f"reporte_financiero_{today_local().isoformat()}.csv"
     return Response(
         content=csv_content,
         media_type="text/csv; charset=utf-8",

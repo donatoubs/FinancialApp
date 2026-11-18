@@ -9,26 +9,28 @@ from sqlalchemy import or_
 from app.models.category import Category
 from app.schemas.category import CategoryCreate
 
-# Catálogo de categorías predeterminadas del sistema
+# Catálogo de categorías predeterminadas del sistema.
+# Colores: grises carbón (gastos) y verdes (ingresos), acordes a la paleta de la app;
+# el naranja queda reservado para avisos.
 DEFAULT_CATEGORIES = [
     # Gastos
-    {"name": "Alimentación y Supermercado", "icon": "bi-cart3", "color": "#10b981", "type": "expense"},
-    {"name": "Transporte y Gasolina", "icon": "bi-car-front", "color": "#0284c7", "type": "expense"},
-    {"name": "Vivienda y Alquiler", "icon": "bi-house", "color": "#0ea5e9", "type": "expense"},
-    {"name": "Servicios Básicos (Luz, Agua, Internet)", "icon": "bi-lightning-charge", "color": "#f97316", "type": "expense"},
-    {"name": "Salud y Medicinas", "icon": "bi-heart-pulse", "color": "#ef4444", "type": "expense"},
-    {"name": "Educación y Cursos", "icon": "bi-mortarboard", "color": "#f59e0b", "type": "expense"},
-    {"name": "Entretenimiento y Ocio", "icon": "bi-controller", "color": "#8b5cf6", "type": "expense"},
-    {"name": "Compras y Ropa", "icon": "bi-bag-check", "color": "#ec4899", "type": "expense"},
-    {"name": "Suscripciones (Netflix, Spotify)", "icon": "bi-tv", "color": "#6366f1", "type": "expense"},
-    {"name": "Restaurantes y Salidas", "icon": "bi-cup-hot", "color": "#d97706", "type": "expense"},
-    {"name": "Otros Gastos", "icon": "bi-tags", "color": "#64748b", "type": "expense"},
+    {"name": "Alimentación y Supermercado", "icon": "bi-cart3", "color": "#2B2E32", "type": "expense"},
+    {"name": "Transporte y Gasolina", "icon": "bi-car-front", "color": "#4A5058", "type": "expense"},
+    {"name": "Vivienda y Alquiler", "icon": "bi-house", "color": "#5E6670", "type": "expense"},
+    {"name": "Servicios Básicos (Luz, Agua, Internet)", "icon": "bi-lightning-charge", "color": "#737C86", "type": "expense"},
+    {"name": "Salud y Medicinas", "icon": "bi-heart-pulse", "color": "#3A3F45", "type": "expense"},
+    {"name": "Educación y Cursos", "icon": "bi-mortarboard", "color": "#88909A", "type": "expense"},
+    {"name": "Entretenimiento y Ocio", "icon": "bi-controller", "color": "#545B63", "type": "expense"},
+    {"name": "Compras y Ropa", "icon": "bi-bag-check", "color": "#6A727C", "type": "expense"},
+    {"name": "Suscripciones (Netflix, Spotify)", "icon": "bi-tv", "color": "#40464D", "type": "expense"},
+    {"name": "Restaurantes y Salidas", "icon": "bi-cup-hot", "color": "#7D8892", "type": "expense"},
+    {"name": "Otros Gastos", "icon": "bi-tags", "color": "#A3ABB3", "type": "expense"},
     
     # Ingresos
-    {"name": "Sueldo y Nómina", "icon": "bi-cash-coin", "color": "#16a34a", "type": "income"},
-    {"name": "Ventas y Negocio", "icon": "bi-shop", "color": "#059669", "type": "income"},
-    {"name": "Inversiones y Rendimientos", "icon": "bi-graph-up-arrow", "color": "#0d9488", "type": "income"},
-    {"name": "Otros Ingresos", "icon": "bi-wallet2", "color": "#14b8a6", "type": "income"},
+    {"name": "Sueldo y Nómina", "icon": "bi-cash-coin", "color": "#2E6B3F", "type": "income"},
+    {"name": "Ventas y Negocio", "icon": "bi-shop", "color": "#3F7D50", "type": "income"},
+    {"name": "Inversiones y Rendimientos", "icon": "bi-graph-up-arrow", "color": "#558F66", "type": "income"},
+    {"name": "Otros Ingresos", "icon": "bi-wallet2", "color": "#6FA07D", "type": "income"},
 ]
 
 
@@ -48,6 +50,18 @@ def seed_default_categories(db: Session) -> None:
                 is_default=True
             )
             db.add(db_cat)
+        db.commit()
+        return
+
+    # Mantener sincronizados los colores de las categorías del sistema ya existentes
+    palette = {cat["name"]: cat["color"] for cat in DEFAULT_CATEGORIES}
+    changed = False
+    for cat in db.query(Category).filter(Category.is_default.is_(True)).all():
+        new_color = palette.get(cat.name)
+        if new_color and cat.color != new_color:
+            cat.color = new_color
+            changed = True
+    if changed:
         db.commit()
 
 

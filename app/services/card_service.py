@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.models.card import Card, CardType
 from app.schemas.card import CardCreate, CardUpdate, CardResponse
+from app.utils.dates import today_local
 
 
 def calculate_days_until(target_day: Optional[int]) -> Optional[int]:
@@ -20,7 +21,7 @@ def calculate_days_until(target_day: Optional[int]) -> Optional[int]:
     if not target_day or target_day < 1 or target_day > 31:
         return None
 
-    today = date.today()
+    today = today_local()
     current_year = today.year
     current_month = today.month
 

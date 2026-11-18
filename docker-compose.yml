@@ -8,12 +8,13 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en el archivo .env}
       POSTGRES_DB: ${POSTGRES_DB:-financial_db}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    # La base solo escucha en esta máquina (no expuesta a la red)
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-financial_db}"]
       interval: 10s
@@ -35,11 +36,11 @@ services:
       - DEBUG=False
       - HOST=0.0.0.0
       - PORT=8000
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres_db:5432/${POSTGRES_DB:-financial_db}
-      - SECRET_KEY=${SECRET_KEY:-financial_super_secret_production_key_change_me_9876543210}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres_db:5432/${POSTGRES_DB:-financial_db}
+      - SECRET_KEY=${SECRET_KEY:?Define SECRET_KEY en el archivo .env}
       - ALGORITHM=HS256
       - ACCESS_TOKEN_EXPIRE_MINUTES=1440
-      - CORS_ORIGINS=["*"]
+      - TRUST_PROXY=false
     depends_on:
       postgres_db:
         condition: service_healthy

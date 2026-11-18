@@ -16,6 +16,8 @@ from app.models.category import Category
 from app.models.card import Card, CardType
 from app.models.transaction import Transaction, TransactionType
 from app.services import card_service, transaction_service
+from app.utils.dates import today_local
+from app.utils.formatting import fmt_money, fmt_percent
 from app.schemas.budget import (
     BudgetCreate,
     BudgetUpdate,
@@ -88,7 +90,7 @@ def get_budgets_by_user(
     year: Optional[int] = None
 ) -> List[BudgetResponse]:
     """Retorna los presupuestos del usuario para un mes/año específico."""
-    today = date.today()
+    today = today_local()
     m = month or today.month
     y = year or today.year
 
@@ -108,7 +110,7 @@ def get_budget_summary(
     year: Optional[int] = None
 ) -> BudgetSummary:
     """Genera un resumen consolidado de presupuestos del mes con contadores de salud."""
-    today = date.today()
+    today = today_local()
     m = month or today.month
     y = year or today.year
 
@@ -192,7 +194,7 @@ def generate_financial_alerts(db: Session, user_id: int) -> AlertsResponse:
     Analiza en tiempo real las finanzas del usuario y genera alertas inteligentes.
     """
     alerts: List[FinancialAlert] = []
-    today = date.today()
+    today = today_local()
 
     # 1. Alertas de Presupuesto del Mes Actual
     budgets = get_budgets_by_user(db, user_id, month=today.month, year=today.year)
@@ -201,8 +203,8 @@ def generate_financial_alerts(db: Session, user_id: int) -> AlertsResponse:
             alerts.append(FinancialAlert(
                 id=f"budget_exc_{b.id}",
                 alert_type="budget_exceeded",
-                title=f"Presupuesto superado en {b.category_name}",
-                message=f"Has gastado ${float(b.spent_amount):.2f} de tu límite de ${float(b.limit_amount):.2f} ({b.spent_percentage}% consumido).",
+                title=f"{b.category_name}: presupuesto superado",
+                message=f"Llevas {fmt_money(b.spent_amount)} de un límite de {fmt_money(b.limit_amount)} ({fmt_percent(b.spent_percentage)}).",
                 severity="danger",
                 target_url="/budgets"
             ))
@@ -210,8 +212,8 @@ def generate_financial_alerts(db: Session, user_id: int) -> AlertsResponse:
             alerts.append(FinancialAlert(
                 id=f"budget_warn_{b.id}",
                 alert_type="budget_warning",
-                title=f"Atención: Presupuesto en {b.category_name}",
-                message=f"Has consumido el {b.spent_percentage}% de tu presupuesto (${float(b.spent_amount):.2f} / ${float(b.limit_amount):.2f}).",
+                title=f"{b.category_name} cerca del límite",
+                message=f"Llevas el {fmt_percent(b.spent_percentage)} del presupuesto: {fmt_money(b.spent_amount)} de {fmt_money(b.limit_amount)}.",
                 severity="warning",
                 target_url="/budgets"
             ))
@@ -233,8 +235,8 @@ def generate_financial_alerts(db: Session, user_id: int) -> AlertsResponse:
                 alerts.append(FinancialAlert(
                     id=f"card_due_today_{c.id}",
                     alert_type="card_near_due",
-                    title=f"¡Pago vence HOY en {c.name}!",
-                    message=f"Tienes un saldo pendiente de ${float(bal):.2f} en {c.bank_name} que vence hoy.",
+                    title=f"El pago de {c.name} vence hoy",
+                    message=f"Saldo por pagar: {fmt_money(bal)} ({c.bank_name}).",
                     severity="danger",
                     target_url="/cards"
                 ))
@@ -243,7 +245,7 @@ def generate_financial_alerts(db: Session, user_id: int) -> AlertsResponse:
                     id=f"card_due_soon_{c.id}",
                     alert_type="card_near_due",
                     title=f"Pago próximo en {c.name}",
-                    message=f"Faltan {enriched_c.days_until_due} días para el vencimiento de tu tarjeta ({c.bank_name}) con deuda de ${float(bal):.2f}.",
+                    message=f"Vence en {enriched_c.days_until_due} días. Saldo por pagar: {fmt_money(bal)} ({c.bank_name}).",
                     severity="warning",
                     target_url="/cards"
                 ))
@@ -253,8 +255,8 @@ def generate_financial_alerts(db: Session, user_id: int) -> AlertsResponse:
             alerts.append(FinancialAlert(
                 id=f"card_util_{c.id}",
                 alert_type="card_high_utilization",
-                title=f"Alta utilización de cupo en {c.name}",
-                message=f"Estás utilizando el {enriched_c.utilization_percentage}% de tu cupo disponible (${float(bal):.2f} / ${float(c.credit_limit):.2f}).",
+                title=f"{c.name}: cupo muy usado",
+                message=f"Usas el {fmt_percent(enriched_c.utilization_percentage)} del cupo: {fmt_money(bal)} de {fmt_money(c.credit_limit)}.",
                 severity="warning",
                 target_url="/cards"
             ))

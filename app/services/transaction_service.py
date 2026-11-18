@@ -15,6 +15,54 @@ from app.models.account import BankAccount
 from app.models.card import Card, CardType
 from app.models.category import Category
 from app.schemas.transaction import TransactionCreate, TransactionUpdate, TransactionResponse
+from app.utils.dates import today_local
+
+
+def _validate_ownership(
+    db: Session,
+    user_id: int,
+    category_id: Optional[int] = None,
+    source_account_id: Optional[int] = None,
+    destination_account_id: Optional[int] = None,
+    card_id: Optional[int] = None,
+) -> None:
+    """
+    Verifica que la categoría, cuentas y tarjeta referenciadas pertenezcan al usuario
+    (las categorías globales del sistema, con user_id NULL, también son válidas).
+    """
+    if category_id is not None:
+        exists = db.query(Category.id).filter(
+            Category.id == category_id,
+            (Category.user_id == user_id) | (Category.user_id.is_(None))
+        ).first()
+        if not exists:
+            raise HTTPException(status_code=400, detail="La categoría indicada no existe o no te pertenece.")
+
+    for acc_id, label in ((source_account_id, "origen"), (destination_account_id, "destino")):
+        if acc_id is not None:
+            exists = db.query(BankAccount.id).filter(
+                BankAccount.id == acc_id, BankAccount.user_id == user_id
+            ).first()
+            if not exists:
+                raise HTTPException(status_code=400, detail=f"La cuenta de {label} no existe o no te pertenece.")
+
+    if card_id is not None:
+        exists = db.query(Card.id).filter(Card.id == card_id, Card.user_id == user_id).first()
+        if not exists:
+            raise HTTPException(status_code=400, detail="La tarjeta indicada no existe o no te pertenece.")
+
+
+def _validate_structure(tx_type: TransactionType, source_account_id, destination_account_id, card_id) -> None:
+    """Reglas de consistencia según el tipo de movimiento."""
+    if tx_type == TransactionType.TRANSFER:
+        if not source_account_id or not destination_account_id:
+            raise HTTPException(status_code=400, detail="Una transferencia requiere cuenta de origen y cuenta de destino.")
+        if source_account_id == destination_account_id:
+            raise HTTPException(status_code=400, detail="La cuenta de origen y destino deben ser distintas.")
+
+    if tx_type == TransactionType.CARD_PAYMENT:
+        if not card_id or not source_account_id:
+            raise HTTPException(status_code=400, detail="El pago de tarjeta requiere especificar la cuenta pagadora y la tarjeta.")
 
 
 def enrich_transaction_response(tx: Transaction) -> TransactionResponse:
@@ -64,7 +112,7 @@ def _apply_balance_effect(db: Session, tx: Transaction, user_id: int, multiplier
         if tx.card_id and tx.payment_method == PaymentMethod.CREDIT_CARD:
             card = db.query(Card).filter(Card.id == tx.card_id, Card.user_id == user_id).first()
             if card:
-                card.current_balance = max(Decimal("0.00"), Decimal(str(card.current_balance)) + amount)
+                card.current_balance = Decimal(str(card.current_balance)) + amount
         elif tx.source_account_id:
             account = db.query(BankAccount).filter(BankAccount.id == tx.source_account_id, BankAccount.user_id == user_id).first()
             if account:
@@ -90,23 +138,22 @@ def _apply_balance_effect(db: Session, tx: Transaction, user_id: int, multiplier
         if tx.card_id:
             card = db.query(Card).filter(Card.id == tx.card_id, Card.user_id == user_id).first()
             if card:
-                card.current_balance = max(Decimal("0.00"), Decimal(str(card.current_balance)) - amount)
+                card.current_balance = Decimal(str(card.current_balance)) - amount
 
 
 def create_transaction(db: Session, user_id: int, tx_in: TransactionCreate) -> Transaction:
     """
     Registra un movimiento y actualiza atómicamente los saldos de cuentas y tarjetas correspondientes.
     """
-    # Validaciones según tipo
-    if tx_in.transaction_type == TransactionType.TRANSFER:
-        if not tx_in.source_account_id or not tx_in.destination_account_id:
-            raise HTTPException(status_code=400, detail="Una transferencia requiere cuenta de origen y cuenta de destino.")
-        if tx_in.source_account_id == tx_in.destination_account_id:
-            raise HTTPException(status_code=400, detail="La cuenta de origen y destino deben ser distintas.")
-
-    if tx_in.transaction_type == TransactionType.CARD_PAYMENT:
-        if not tx_in.card_id or not tx_in.source_account_id:
-            raise HTTPException(status_code=400, detail="El pago de tarjeta requiere especificar la cuenta pagadora y la tarjeta.")
+    # Validaciones según tipo y propiedad de las entidades referenciadas
+    _validate_structure(tx_in.transaction_type, tx_in.source_account_id, tx_in.destination_account_id, tx_in.card_id)
+    _validate_ownership(
+        db, user_id,
+        category_id=tx_in.category_id,
+        source_account_id=tx_in.source_account_id,
+        destination_account_id=tx_in.destination_account_id,
+        card_id=tx_in.card_id,
+    )
 
     db_tx = Transaction(
         user_id=user_id,
@@ -120,7 +167,7 @@ def create_transaction(db: Session, user_id: int, tx_in: TransactionCreate) -> T
         payment_method=tx_in.payment_method,
         description=tx_in.description.strip(),
         notes=tx_in.notes.strip() if tx_in.notes else None,
-        transaction_date=tx_in.transaction_date or date.today()
+        transaction_date=tx_in.transaction_date or today_local()
     )
     db.add(db_tx)
     
@@ -181,32 +228,41 @@ def update_transaction(
     """
     Actualiza una transacción: revierte el impacto anterior y aplica el nuevo impacto en saldos.
     """
+    # Solo los campos enviados explícitamente (permite limpiar campos enviando null)
+    changes = tx_in.model_dump(exclude_unset=True)
+
+    # Campos obligatorios en BD: no se pueden poner en null
+    for required in ("transaction_type", "amount", "currency", "payment_method", "description", "transaction_date"):
+        if required in changes and changes[required] is None:
+            raise HTTPException(status_code=400, detail=f"El campo '{required}' no puede quedar vacío.")
+
+    # Estado resultante para validar antes de tocar saldos
+    def final(field):
+        return changes[field] if field in changes else getattr(tx, field)
+
+    _validate_structure(final("transaction_type"), final("source_account_id"), final("destination_account_id"), final("card_id"))
+    _validate_ownership(
+        db, user_id,
+        category_id=changes.get("category_id"),
+        source_account_id=changes.get("source_account_id"),
+        destination_account_id=changes.get("destination_account_id"),
+        card_id=changes.get("card_id"),
+    )
+
     # 1. Revertir saldo anterior
     _apply_balance_effect(db, tx, user_id, multiplier=-1)
 
     # 2. Actualizar campos
-    if tx_in.transaction_type is not None:
-        tx.transaction_type = tx_in.transaction_type
-    if tx_in.amount is not None:
-        tx.amount = Decimal(str(tx_in.amount))
-    if tx_in.currency is not None:
-        tx.currency = tx_in.currency.upper()
-    if tx_in.category_id is not None:
-        tx.category_id = tx_in.category_id
-    if tx_in.source_account_id is not None:
-        tx.source_account_id = tx_in.source_account_id
-    if tx_in.destination_account_id is not None:
-        tx.destination_account_id = tx_in.destination_account_id
-    if tx_in.card_id is not None:
-        tx.card_id = tx_in.card_id
-    if tx_in.payment_method is not None:
-        tx.payment_method = tx_in.payment_method
-    if tx_in.description is not None:
-        tx.description = tx_in.description.strip()
-    if tx_in.notes is not None:
-        tx.notes = tx_in.notes.strip() if tx_in.notes else None
-    if tx_in.transaction_date is not None:
-        tx.transaction_date = tx_in.transaction_date
+    for field, value in changes.items():
+        if field == "amount":
+            value = Decimal(str(value))
+        elif field == "currency":
+            value = value.upper()
+        elif field == "description":
+            value = value.strip()
+        elif field == "notes":
+            value = value.strip() if value else None
+        setattr(tx, field, value)
 
     # 3. Aplicar nuevo saldo
     _apply_balance_effect(db, tx, user_id, multiplier=1)

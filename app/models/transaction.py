@@ -7,6 +7,7 @@ import enum
 from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Numeric, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from app.database import Base
+from app.utils.dates import today_local
 
 
 class TransactionType(str, enum.Enum):
@@ -42,7 +43,7 @@ class Transaction(Base):
     payment_method = Column(Enum(PaymentMethod), default=PaymentMethod.CASH, nullable=False)
     description = Column(String(255), nullable=False)
     notes = Column(Text, nullable=True)
-    transaction_date = Column(Date, default=date.today, nullable=False, index=True)
+    transaction_date = Column(Date, default=today_local, nullable=False, index=True)
 
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(

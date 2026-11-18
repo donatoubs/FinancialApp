@@ -6,6 +6,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
+from fastapi import HTTPException, status
 from app.auth.security import get_password_hash, verify_password
 
 
@@ -58,6 +59,9 @@ def update_user(db: Session, user: User, user_in: UserUpdate) -> User:
     if user_in.currency_preference is not None:
         user.currency_preference = user_in.currency_preference.upper()
     if user_in.password is not None and user_in.password.strip():
+        # Cambiar la contraseña exige la actual: una sesión abierta no basta
+        if not user_in.current_password or not verify_password(user_in.current_password, user.hashed_password):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La contraseña actual no es correcta.")
         user.hashed_password = get_password_hash(user_in.password)
 
     db.commit()

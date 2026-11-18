@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
 from app.models.transaction import TransactionType, PaymentMethod
+from app.utils.dates import today_local
 
 
 class TransactionBase(BaseModel):
@@ -22,7 +23,7 @@ class TransactionBase(BaseModel):
     payment_method: PaymentMethod = Field(default=PaymentMethod.CASH, description="Método de pago")
     description: str = Field(..., min_length=1, max_length=255, description="Descripción del movimiento", examples=["Supermercado Supermaxi"])
     notes: Optional[str] = Field(None, description="Notas o detalles adicionales")
-    transaction_date: date = Field(default_factory=date.today, description="Fecha de realización del movimiento")
+    transaction_date: date = Field(default_factory=today_local, description="Fecha de realización del movimiento")
 
 
 class TransactionCreate(TransactionBase):

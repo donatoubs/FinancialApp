@@ -20,7 +20,7 @@ from app.schemas.user import (
 from app.auth.security import create_access_token
 from app.auth.dependencies import get_current_active_user
 from app.services import user_service
-from app.security.rate_limiter import auth_rate_limiter
+from app.security.rate_limiter import auth_rate_limiter, failed_login_limiter
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
@@ -75,9 +75,12 @@ def login_json(
 ):
     # Protección de rate limiting contra fuerza bruta
     auth_rate_limiter.check(request)
+    email_key = credentials.email.strip().lower()
+    failed_login_limiter.ensure_allowed(email_key)
 
     user = user_service.authenticate_user(db, email=credentials.email, password=credentials.password)
     if not user:
+        failed_login_limiter.hit(email_key)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Correo electrónico o contraseña incorrectos.",
@@ -90,6 +93,7 @@ def login_json(
             detail="La cuenta de usuario está inactiva."
         )
 
+    failed_login_limiter.reset(email_key)
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
 
     return UserAuthResponse(
@@ -112,9 +116,12 @@ def login_swagger(
     db: Session = Depends(get_db)
 ):
     auth_rate_limiter.check(request)
+    email_key = form_data.username.strip().lower()
+    failed_login_limiter.ensure_allowed(email_key)
 
     user = user_service.authenticate_user(db, email=form_data.username, password=form_data.password)
     if not user:
+        failed_login_limiter.hit(email_key)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales incorrectas.",
@@ -150,8 +157,12 @@ def get_current_user_profile(current_user: User = Depends(get_current_active_use
     description="Permite modificar el nombre completo o la moneda de preferencia del usuario."
 )
 def update_current_user_profile(
+    request: Request,
     user_update: UserUpdate,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
+    if user_update.password:
+        # Mismo límite que el login: evita adivinar la contraseña actual por fuerza bruta
+        auth_rate_limiter.check(request)
     return user_service.update_user(db=db, user=current_user, user_in=user_update)

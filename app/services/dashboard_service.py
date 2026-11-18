@@ -15,6 +15,7 @@ from app.models.card import Card, CardType
 from app.models.transaction import Transaction, TransactionType
 from app.models.category import Category
 from app.services import card_service, transaction_service
+from app.utils.dates import today_local
 from app.schemas.dashboard import (
     DashboardResponse,
     DashboardCharts,
@@ -35,7 +36,7 @@ def get_dashboard_metrics(db: Session, user_id: int) -> DashboardResponse:
     """
     Genera todas las métricas consolidadas, alertas financieras y datos para gráficos del dashboard.
     """
-    today = date.today()
+    today = today_local()
     current_year = today.year
     current_month = today.month
 
@@ -50,6 +51,7 @@ def get_dashboard_metrics(db: Session, user_id: int) -> DashboardResponse:
     acc_labels: List[str] = []
     acc_values: List[float] = []
     acc_colors: List[str] = []
+    acc_banks: List[str] = []
 
     for acc in accounts:
         bal = Decimal(str(acc.current_balance or 0))
@@ -59,7 +61,8 @@ def get_dashboard_metrics(db: Session, user_id: int) -> DashboardResponse:
             total_bank += bal
 
         if bal > 0:
-            acc_labels.append(f"{acc.name} ({acc.bank_name})")
+            acc_labels.append(acc.name)
+            acc_banks.append("" if acc.bank_name == acc.name or acc.account_type == AccountType.CASH else acc.bank_name)
             acc_values.append(float(bal))
             acc_colors.append(acc.color or "#2563eb")
 
@@ -85,9 +88,11 @@ def get_dashboard_metrics(db: Session, user_id: int) -> DashboardResponse:
     card_debts: List[float] = []
     card_limits: List[float] = []
     card_colors: List[str] = []
+    card_banks: List[str] = []
 
     for c in credit_cards:
-        card_labels.append(f"{c.name} ({c.bank_name})")
+        card_labels.append(c.name)
+        card_banks.append(c.bank_name)
         card_debts.append(float(c.current_balance or 0))
         card_limits.append(float(c.credit_limit or 0))
         card_colors.append(c.color or "#003b6f")
@@ -234,13 +239,15 @@ def get_dashboard_metrics(db: Session, user_id: int) -> DashboardResponse:
             accounts_distribution=AccountDistributionData(
                 labels=acc_labels,
                 values=acc_values,
-                colors=acc_colors
+                colors=acc_colors,
+                subtitles=acc_banks
             ),
             cards_debt_distribution=CardDebtChartData(
                 labels=card_labels,
                 debts=card_debts,
                 limits=card_limits,
-                colors=card_colors
+                colors=card_colors,
+                subtitles=card_banks
             )
         )
     )

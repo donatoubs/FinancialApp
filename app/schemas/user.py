@@ -27,6 +27,7 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = Field(None, min_length=2, max_length=100, description="Nuevo nombre completo")
     currency_preference: Optional[str] = Field(None, min_length=3, max_length=3, description="Nueva moneda preferida")
     password: Optional[str] = Field(None, min_length=8, max_length=100, description="Nueva contraseña (opcional)")
+    current_password: Optional[str] = Field(None, max_length=100, description="Contraseña actual (obligatoria para cambiarla)")
 
 
 class UserResponse(UserBase):

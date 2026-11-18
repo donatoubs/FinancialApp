@@ -67,7 +67,8 @@ class Card(Base):
             return 0.0
         limit = float(self.credit_limit)
         balance = float(self.current_balance)
-        return min(100.0, round((balance / limit) * 100.0, 2))
+        # Un saldo negativo representa saldo a favor: la utilización mínima es 0%
+        return max(0.0, min(100.0, round((balance / limit) * 100.0, 2)))
 
     def __repr__(self):
         return f"<Card(id={self.id}, name='{self.name}', type={self.card_type.value}, bank='{self.bank_name}', last4='{self.last_four_digits}')>"

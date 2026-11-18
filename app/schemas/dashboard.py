@@ -25,6 +25,7 @@ class AccountDistributionData(BaseModel):
     labels: List[str]
     values: List[float]
     colors: List[str]
+    subtitles: List[str] = []   # banco de cada cuenta
 
 
 class CardDebtChartData(BaseModel):
@@ -32,6 +33,7 @@ class CardDebtChartData(BaseModel):
     debts: List[float]
     limits: List[float]
     colors: List[str]
+    subtitles: List[str] = []   # banco de cada tarjeta
 
 
 class DashboardCharts(BaseModel):

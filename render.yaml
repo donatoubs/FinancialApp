@@ -5,7 +5,8 @@ services:
     region: oregon
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    # --proxy-headers: Render termina HTTPS; así las URLs generadas usan https://
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.3
@@ -13,8 +14,10 @@ services:
         value: production
       - key: DEBUG
         value: "False"
-      - key: ALLOWED_ORIGINS
-        value: "*"
+      - key: TRUST_PROXY
+        value: "true"
+      - key: ENABLE_DOCS
+        value: "False"
       - key: DATABASE_URL
         sync: false
       - key: SECRET_KEY

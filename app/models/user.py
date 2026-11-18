@@ -17,6 +17,8 @@ class User(Base):
     full_name = Column(String(100), nullable=False)
     currency_preference = Column(String(3), default="USD", nullable=False)
     webhook_token = Column(String(64), unique=True, index=True, nullable=True)
+    # Si es True, los pagos de comercios ya aprendidos se registran solos; el resto va a Pendientes
+    webhook_auto_confirm = Column(Boolean, default=True, server_default="true", nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     is_superuser = Column(Boolean, default=False, nullable=False)
     

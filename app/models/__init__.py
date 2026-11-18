@@ -9,6 +9,7 @@ from app.models.card import Card, CardType
 from app.models.category import Category
 from app.models.transaction import Transaction, TransactionType, PaymentMethod
 from app.models.budget import Budget
+from app.models.pending import PendingTransaction, MerchantRule, PendingStatus
 
 __all__ = [
     "Base",
@@ -21,5 +22,8 @@ __all__ = [
     "Transaction",
     "TransactionType",
     "PaymentMethod",
-    "Budget"
+    "Budget",
+    "PendingTransaction",
+    "MerchantRule",
+    "PendingStatus"
 ]
