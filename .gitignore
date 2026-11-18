@@ -43,3 +43,11 @@ dist/
 # Binarios locales
 cloudflared.exe
 *.exe
+
+# Impeccable: solo se versionan design.json y surfaces/ (lo demás son capturas y bocetos temporales)
+.impeccable/*
+!.impeccable/design.json
+!.impeccable/surfaces/
+
+# Configuración local de Claude Code (vista previa con base temporal)
+.claude/
