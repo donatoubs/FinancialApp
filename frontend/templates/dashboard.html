@@ -4,390 +4,237 @@
 
 {% block extra_head %}
 <style>
-.dash { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+.dash { display: grid; gap: 40px; grid-template-columns: minmax(0, 1fr); }
 .dash > * { min-width: 0; }
-.dash-side { display: grid; gap: 16px; align-content: start; }
 @media (min-width: 1200px) {
-    .dash { grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; }
-    .dash-worth { grid-column: 1; grid-row: 1; }
-    .dash-side { grid-column: 2; grid-row: 1 / span 2; gap: 20px; }
-    .dash-cols { grid-column: 1; }
-    .dash-recent { grid-column: 1 / -1; }
+    .dash { grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto 1fr; column-gap: 56px; }
+    .lower { align-self: start; }
+    .dash-side { grid-column: 2; grid-row: 1 / span 2; }
 }
 
-/* Patrimonio + roseta */
-.worth { display: grid; gap: 20px 18px; padding: 24px; align-items: center;
-    grid-template-columns: 128px minmax(0, 1fr); grid-template-areas: "main main" "rings legend"; }
-.worth-main { grid-area: main; }
-.rings { grid-area: rings; }
-.rosette-legend { grid-area: legend; }
-@media (min-width: 768px) {
-    .worth { padding: 28px 32px; gap: 20px 40px; align-items: start;
-        grid-template-columns: minmax(0, 1fr) 236px; grid-template-areas: "main rings" "legend rings"; }
-    .rosette-legend { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); border-top: 1px solid var(--rule); padding-top: 14px; }
-}
-.worth-label { font-size: 0.8125rem; font-weight: 600; color: var(--ink-muted); }
-.worth-figure { font-size: clamp(2.75rem, 7vw, 4.5rem); margin: 8px 0 20px; color: var(--carbon-900); }
-.worth-figure .cents { font-size: clamp(1.25rem, 3.4vw, 2.1rem); vertical-align: 0.72em; margin-left: 2px; }
-.worth-figure.is-negative { color: var(--expense); }
-.worth-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)); gap: 14px 20px; border-top: 1px solid var(--rule); padding-top: 16px; margin: 0; }
-.worth-facts dt { font-size: 0.75rem; font-weight: 600; color: var(--ink-muted); }
-.worth-facts dd { margin: 2px 0 0; font-size: 1.125rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.worth-facts dd small { display: block; font-size: 0.75rem; font-weight: 500; color: var(--ink-muted); }
+/* Saldo protagonista */
+.hero-label { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 0.8125rem; font-weight: 600; color: var(--ink-muted); }
+.hero-figure { font-size: clamp(3.25rem, 9vw, 5.5rem); margin: 12px 0 24px; }
+.hero-figure small { font-size: 0.45em; color: var(--ink-faint); letter-spacing: -0.02em; margin-left: 2px; }
+.hero-figure.is-negative { color: var(--expense); }
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 32px; margin: 32px 0 0; padding-top: 20px; border-top: 1px solid var(--rule-strong); }
+@media (min-width: 768px) { .facts { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.facts dt { font-size: 0.75rem; font-weight: 600; color: var(--ink-muted); }
+.facts dd { margin: 6px 0 0; font-size: 1.375rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; }
+.facts dd small { display: block; font-size: 0.75rem; font-weight: 500; letter-spacing: 0; color: var(--ink-muted); margin-top: 6px; }
 
-.rings svg { display: block; width: 100%; max-width: 236px; height: auto; overflow: visible; }
-.rings .track { stroke: var(--storm-300); }
-.rings .band { transition: stroke-dashoffset 1.4s var(--ease-out); }
-.rings .medallion { stroke: var(--carbon-600); }
-.rosette-legend { width: 100%; display: grid; gap: 10px 20px; margin: 0; padding: 0; list-style: none; font-size: 0.8125rem; }
-.rosette-legend li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 8px; align-items: center; }
-.rosette-legend .name { font-weight: 600; overflow-wrap: anywhere; }
-.rosette-legend .amt { grid-column: 2; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+/* Columna lateral: por confirmar + registro */
+.side-block + .side-block { margin-top: 40px; }
+.log-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 2px 12px; padding: 12px 0; border-bottom: 1px solid var(--rule); align-items: start; text-decoration: none; color: var(--ink); }
+.log-row:hover { color: var(--ink); }
+.log-row .time { font-size: 0.75rem; color: var(--ink-faint); padding-top: 2px; }
+.log-row .who { font-weight: 600; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.log-row .who span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-row .meta { grid-column: 2; font-size: 0.75rem; color: var(--ink-muted); }
+.log-row .amt { font-weight: 700; white-space: nowrap; }
+.log-day { font-size: 0.75rem; font-weight: 700; color: var(--ink-muted); padding: 14px 0 2px; }
+.pending-row .new { font-size: 0.6875rem; font-weight: 700; color: var(--ink); background: var(--surface-2); border-radius: var(--radius-sm); padding: 1px 5px; flex: none; }
 
-/* Franja de pendientes (solo celular/tablet: en escritorio está la columna) */
-.pending-strip { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--carbon-800); color: var(--storm-50); text-decoration: none; font-weight: 600; font-size: 0.9375rem; }
-.pending-strip .count { margin-left: 0; }
-.pending-strip[hidden] { display: none; }
-@media (min-width: 1200px) { .pending-strip { display: none; } }
-@media (max-width: 991.98px) { .dash-head-action { display: none; } }
-
-/* Pendientes */
-.pending-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--rule); margin-bottom: 8px; text-decoration: none; color: var(--ink); }
-.pending-item:hover { border-color: var(--rule-strong); }
-.pending-item.is-new { background: var(--panel) !important; box-shadow: inset 0 0 0 2px var(--safety); }
-.pending-item .m .new { display: inline-block; background: var(--safety); color: var(--carbon-950); font-size: 0.6875rem; border-radius: 999px; padding: 0 7px; margin-right: 6px; vertical-align: 1px; }
-.pending-item .m { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pending-item .s { font-size: 0.75rem; color: var(--ink-muted); grid-column: 1 / -1; }
-.pending-item .a { font-weight: 700; font-variant-numeric: tabular-nums; }
-
-/* Barras a escala fija */
-.dash-cols { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 768px) { .dash-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } }
-.bars { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
-.bar-row { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 4px 12px; align-items: center; font-size: 0.8125rem; }
-.bar-row .lbl { color: var(--ink-muted); font-weight: 600; grid-row: span 2; }
-.bar-line { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 10px; align-items: center; }
-.bar-line .val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-.bar { height: 10px; border-radius: 2px; background: currentColor; min-width: 2px; transition: width .8s var(--ease-out); }
-.bar.in { color: var(--income); } .bar.out { color: var(--expense); }
-.legend-inline { display: flex; gap: 14px; font-size: 0.75rem; color: var(--ink-muted); }
-.legend-inline span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; background: var(--c); }
-.cat-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; font-size: 0.8125rem; }
-.cat-row .name { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.cat-row .name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cat-row .bar { grid-column: 1 / -1; height: 6px; color: var(--carbon-500); }
-.card-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; font-size: 0.8125rem; padding-bottom: 12px; border-bottom: 1px solid var(--rule); }
-.card-row:last-child { border-bottom: 0; padding-bottom: 0; }
-.card-row .track { grid-column: 1 / -1; height: 6px; border-radius: 2px; background: var(--storm-200); overflow: hidden; }
-.card-row .track .bar { display: block; height: 100%; border-radius: 0; }
-.card-row .bank, .rosette-legend .bank { display: block; font-size: 0.75rem; color: var(--ink-muted); font-weight: 500; }
-.due { font-size: 0.75rem; font-weight: 600; color: var(--ink-muted); }
-.due.is-soon { color: var(--safety-ink); background: var(--safety-wash); padding: 1px 8px; border-radius: 999px; }
-
-/* Movimientos recientes */
-.tx-table td { padding: 10px 8px; }
-.tx-table .desc { font-weight: 600; }
-.tx-table .meta { font-size: 0.75rem; color: var(--ink-muted); }
-.tx-table .amt { text-align: right; font-weight: 700; white-space: nowrap; }
-@media (max-width: 575.98px) { .tx-table .col-acc { display: none; } }
+/* Meses y categorías */
+.lower { display: grid; gap: 40px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 768px) { .lower { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px; } }
+.months { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.month { display: grid; grid-template-columns: 34px minmax(0, 1fr) 92px; gap: 4px 12px; align-items: center; font-size: 0.8125rem; }
+.month .lbl { color: var(--ink-muted); font-weight: 600; grid-row: span 2; }
+.month .bar { height: 8px; border-radius: 1px; background: var(--ink); min-width: 2px; transition: width .8s var(--ease-out); }
+.month .bar.out { background: var(--expense); }
+.month .val { text-align: right; font-weight: 600; }
+.month .val.out { color: var(--ink-muted); font-weight: 500; }
+.key { display: flex; gap: 14px; font-size: 0.75rem; color: var(--ink-muted); }
+.key span::before { content: ""; display: inline-block; width: 12px; height: 4px; border-radius: 1px; margin-right: 6px; vertical-align: 2px; background: var(--c); }
+.cat { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 0.875rem; }
+.cat .bar { grid-column: 1 / -1; height: 4px; border-radius: 1px; background: var(--ink-soft); }
+.cat .share { color: var(--ink-faint); font-weight: 500; margin-left: 6px; }
+.due { font-size: 0.75rem; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-head">
-    <div>
-        <h1>Resumen</h1>
-        <p id="monthLabel">&nbsp;</p>
-    </div>
-    <div class="page-actions dash-head-action">
-        <a href="/transactions?nuevo=1" class="btn btn-primary"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Nuevo movimiento</a>
-    </div>
-</div>
-
 <div id="globalAlert" class="alert d-none" role="alert"></div>
 
 <div class="dash">
-    <!-- Patrimonio y roseta de fondos -->
-    <section class="panel worth dash-worth" aria-labelledby="worthTitle">
-        <div class="worth-main">
-            <h2 class="worth-label" id="worthTitle">Patrimonio neto</h2>
-            <p class="figure worth-figure" id="netWorth">$0<span class="cents">,00</span></p>
-            <dl class="worth-facts">
-                <div><dt>Disponible</dt><dd id="available">—</dd></div>
-                <div><dt>Deuda de tarjetas</dt><dd id="debt">—</dd></div>
-                <div><dt id="monthFlowLabel">Este mes</dt><dd id="monthFlow">—</dd></div>
-            </dl>
-            <a href="/pending" class="pending-strip" id="pendingStrip" hidden></a>
+    <!-- Saldo disponible y su reparto por cuenta -->
+    <section aria-labelledby="heroTitle">
+        <div class="hero-label">
+            <h1 class="m-0 fs-6 fw-semibold text-muted" id="heroTitle">Saldo disponible</h1>
+            <span id="todayLabel"></span>
         </div>
-        <div class="rings">
-            <svg id="rosette" viewBox="0 0 240 240" role="img" aria-labelledby="rosetteTitle">
-                <title id="rosetteTitle">Distribución de fondos por cuenta</title>
-            </svg>
-        </div>
-        <ul class="rosette-legend" id="rosetteLegend"></ul>
+        <p class="figure hero-figure" id="heroFigure"><span class="skeleton lg"></span></p>
+        <ul class="bands" id="bands" aria-hidden="true"></ul>
+        <ul class="band-legend" id="bandLegend" aria-label="Saldo por cuenta"></ul>
+
+        <dl class="facts">
+            <div><dt id="incomeLabel">Ingresos del mes</dt><dd class="amount-in" id="factIncome">—</dd></div>
+            <div><dt>Gastos del mes</dt><dd class="amount-out" id="factExpense">—</dd></div>
+            <div><dt>Balance neto</dt><dd id="factNet">—</dd></div>
+            <div><dt>Deuda de tarjetas</dt><dd id="factDebt">—</dd></div>
+        </dl>
     </section>
 
-    <div class="dash-side">
-    <!-- Pendientes del iPhone -->
-    <section class="panel dash-pending" aria-labelledby="pendingTitle">
-        <div class="panel-head">
-            <h2 class="section-title" id="pendingTitle">Pendientes del iPhone</h2>
-            <a href="/pending">Revisar todos</a>
-        </div>
-        <div id="pendingList"><div class="empty">Cargando…</div></div>
-    </section>
+    <!-- Por confirmar y registro -->
+    <aside class="dash-side" aria-label="Actividad">
+        <section class="side-block section" aria-labelledby="pendingTitle">
+            <div class="panel-head">
+                <h2 class="section-title" id="pendingTitle">Por confirmar</h2>
+                <a href="/pending">Ver todo</a>
+            </div>
+            <div id="pendingList"><span class="skeleton"></span><span class="skeleton"></span></div>
+        </section>
+        <section class="side-block section" aria-labelledby="logTitle">
+            <div class="panel-head">
+                <h2 class="section-title" id="logTitle">Registro</h2>
+                <a href="/transactions">Movimientos</a>
+            </div>
+            <div id="logList"><span class="skeleton"></span><span class="skeleton"></span><span class="skeleton"></span></div>
+        </section>
+    </aside>
 
-    <!-- Tarjetas de crédito -->
-    <section class="panel" aria-labelledby="cardsTitle">
-        <div class="panel-head">
-            <h2 class="section-title" id="cardsTitle">Tarjetas de crédito</h2>
-            <a href="/cards">Ver tarjetas</a>
-        </div>
-        <div class="bars" id="cardRows"></div>
-    </section>
-    </div>
-
-    <div class="dash-cols">
-        <!-- Ingresos y gastos, 6 meses a la misma escala -->
-        <section class="panel" aria-labelledby="monthsTitle">
+    <!-- Meses y categorías -->
+    <div class="lower">
+        <section class="section" aria-labelledby="monthsTitle">
             <div class="panel-head">
                 <h2 class="section-title" id="monthsTitle">Ingresos y gastos</h2>
-                <div class="legend-inline"><span style="--c: var(--income)">Ingresos</span><span style="--c: var(--expense)">Gastos</span></div>
+                <div class="key"><span style="--c: var(--ink)">Ingresos</span><span style="--c: var(--expense)">Gastos</span></div>
             </div>
-            <ul class="bars" id="monthBars"></ul>
+            <ul class="months" id="monthList"></ul>
         </section>
-
-        <!-- Gastos del mes por categoría y tarjetas -->
-        <section class="panel" aria-labelledby="catTitle">
+        <section class="section" aria-labelledby="catTitle">
             <div class="panel-head">
-                <h2 class="section-title" id="catTitle">Gastos del mes</h2>
-                <a href="/budgets">Presupuestos</a>
+                <h2 class="section-title" id="catTitle">Gastos por categoría</h2>
+                <a href="/analytics">Analíticas</a>
             </div>
-            <div class="bars" id="categoryBars"></div>
+            <div id="catList"></div>
         </section>
     </div>
-
-    <!-- Últimos movimientos -->
-    <section class="panel dash-recent" aria-labelledby="recentTitle">
-        <div class="panel-head">
-            <h2 class="section-title" id="recentTitle">Últimos movimientos</h2>
-            <a href="/transactions">Ver todos</a>
-        </div>
-        <div class="table-responsive">
-            <table class="table tx-table">
-                <thead><tr><th>Detalle</th><th class="col-acc">Cuenta o tarjeta</th><th class="text-end">Monto</th></tr></thead>
-                <tbody id="recentRows"><tr><td colspan="3" class="empty">Cargando…</td></tr></tbody>
-            </table>
-        </div>
-    </section>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
 const SEEN_KEY = 'financial_seen_pending';
+const KIND = {
+    income: { sign: 1, cls: 'amount-in', label: 'Ingreso' },
+    expense: { sign: -1, cls: 'amount-out', label: 'Gasto' },
+    transfer: { sign: 0, cls: 'amount-move', label: 'Transferencia' },
+    card_payment: { sign: 0, cls: 'amount-move', label: 'Pago de tarjeta' },
+};
+const SOURCES = { apple_pay: 'Apple Pay', deuna: 'DeUna', bank: 'Banco', sms: 'SMS' };
+let inks = { acc: {}, card: {} };
 
-function splitFigure(value) {
-    const txt = money(value);
-    const i = txt.lastIndexOf(',');
-    return `${esc(txt.slice(0, i))}<span class="cents">${esc(txt.slice(i))}</span>`;
+function tagFor(t) {
+    const acc = t.source_account_id ? inks.acc[t.source_account_id] : null;
+    const card = t.card_id ? inks.card[t.card_id] : null;
+    const first = card || acc || 'var(--ink-faint)';
+    // Tarjeta: banda de la tarjeta + banda de tipo (tinta); transferencia: origen + destino
+    const second = t.destination_account_id ? inks.acc[t.destination_account_id] : (card ? 'var(--ink)' : null);
+    return `<span class="tag" style="--band:${esc(first)};${second ? `--band-2:${esc(second)}` : ''}" aria-hidden="true"><i></i>${second ? '<i></i>' : ''}</span>`;
 }
 
-function renderWorth(d) {
-    const worth = Number(d.net_worth);
-    const el = document.getElementById('netWorth');
-    el.innerHTML = splitFigure(worth);
-    el.classList.toggle('is-negative', worth < 0);
-
-    document.getElementById('available').innerHTML =
-        `${money(d.available_money)}<small>Efectivo ${money(d.total_cash)}</small>`;
-    document.getElementById('debt').innerHTML =
-        `${money(d.total_credit_debt)}<small>${pct(d.overall_card_utilization_rate)} del cupo usado</small>`;
-    document.getElementById('monthFlowLabel').textContent = 'Balance del mes';
-    document.getElementById('monthFlow').innerHTML =
-        `<span class="${Number(d.monthly_balance) < 0 ? 'amount-out' : 'amount-in'}">${money(d.monthly_balance, { sign: true })}</span><small>Ahorro ${pct(d.monthly_savings_rate)}</small>`;
-    document.getElementById('monthLabel').textContent =
-        `${d.current_month_name} · ingresos ${money(d.monthly_income)}, gastos ${money(d.monthly_expense)}`;
+function amountText(t) {
+    const k = KIND[t.transaction_type] || KIND.expense;
+    return k.sign ? money(Number(t.amount) * k.sign, { sign: true }) : money(t.amount);
 }
 
-// Roseta: una banda guilloche por cuenta, en la tinta de su banco. Tres hilos sinusoidales
-// entrelazados recorren el anillo; el largo de la banda es la parte de esa cuenta en el total.
-const SVG_NS = 'http://www.w3.org/2000/svg';
+function renderHero(d, dist) {
+    const available = Number(d.available_money);
+    const el = document.getElementById('heroFigure');
+    renderFigure(el, available, 'financial_last_available');
+    el.classList.toggle('is-negative', available < 0);
+    const today = new Date();
+    document.getElementById('todayLabel').textContent = `${today.getDate()} ${MONTHS_SHORT[today.getMonth()]} ${today.getFullYear()}`;
+    renderBands(document.getElementById('bands'), document.getElementById('bandLegend'),
+        dist.labels.map((label, i) => ({ label, sub: (dist.subtitles || [])[i], value: Number(dist.values[i]) || 0, color: dist.colors[i] || '#7C8A86' })));
 
-function svgEl(name, attrs) {
-    const el = document.createElementNS(SVG_NS, name);
-    Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
-    return el;
+    const month = d.current_month_name.split(' ')[0].toLowerCase();
+    document.getElementById('incomeLabel').textContent = `Ingresos de ${month}`;
+    document.getElementById('factIncome').textContent = money(d.monthly_income, { sign: true });
+    document.getElementById('factExpense').textContent = money(-Number(d.monthly_expense), { sign: true });
+    const net = Number(d.monthly_balance);
+    const netEl = document.getElementById('factNet');
+    netEl.innerHTML = `${money(net, { sign: true })}<small>Ahorro ${pct(d.monthly_savings_rate)}</small>`;
+    netEl.className = net < 0 ? 'amount-out' : '';
+    const next = (d.upcoming_card_payments || [])[0];
+    const nextTxt = next && next.days_until_due !== null && next.days_until_due !== undefined
+        ? `<span class="due text-nowrap ${next.is_near_due ? 'fw-semibold text-dark' : ''}">${esc(next.name.split(' ')[0])} vence ${next.days_until_due === 0 ? 'hoy' : `en ${next.days_until_due} días`}</span>`
+        : `Patrimonio ${money(d.net_worth)}`;
+    document.getElementById('factDebt').innerHTML = `${money(d.total_credit_debt)}<small>${nextTxt}</small>`;
 }
 
-function guillocheBand(r, halfWidth, sweep, phase, k) {
-    // Onda radial r(θ) = r + a(θ)·sin(kθ + fase). Varias fases forman la trama grabada;
-    // a(θ) baja a cero en los últimos grados para que la banda cierre limpia.
-    const taper = Math.min(0.13, sweep / 4);
-    const steps = Math.max(40, Math.ceil(sweep / (2 * Math.PI) * 1400));
-    let d = '';
-    for (let i = 0; i <= steps; i++) {
-        const u = sweep * (i / steps);
-        const t = -Math.PI / 2 + u;
-        const edge = Math.min(1, u / taper, (sweep - u) / taper);
-        const a = halfWidth * Math.sin((Math.PI / 2) * edge);
-        const rr = r + a * Math.sin(k * u + phase);
-        d += `${i ? 'L' : 'M'}${(120 + rr * Math.cos(t)).toFixed(2)} ${(120 + rr * Math.sin(t)).toFixed(2)}`;
-    }
-    return d;
-}
-
-function medallion(svg) {
-    // Rosetón central de líneas finas (epitrocoide), como el centro de un billete
-    const g = svgEl('g', { class: 'medallion', fill: 'none', 'stroke-width': 0.5, opacity: 0.55 });
-    let d = '';
-    const R = 22, rr = 7, dd = 18;
-    for (let i = 0; i <= 720; i++) {
-        const t = (i / 720) * 2 * Math.PI * 7;
-        const x = (R + rr) * Math.cos(t) - dd * Math.cos(((R + rr) / rr) * t);
-        const y = (R + rr) * Math.sin(t) - dd * Math.sin(((R + rr) / rr) * t);
-        d += `${i ? 'L' : 'M'}${(120 + x).toFixed(2)} ${(120 + y).toFixed(2)}`;
-    }
-    g.appendChild(svgEl('path', { d }));
-    svg.appendChild(g);
-}
-
-function renderRosette(dist) {
-    const svg = document.getElementById('rosette');
-    const legend = document.getElementById('rosetteLegend');
-    svg.querySelectorAll(':scope > :not(title)').forEach(n => n.remove());
-
-    let items = dist.labels.map((label, i) => ({ label, bank: (dist.subtitles || [])[i] || '', value: Number(dist.values[i]) || 0, color: dist.colors[i] || '#4A5058' }))
-        .filter(x => x.value > 0)
-        .sort((a, b) => b.value - a.value);
-    if (items.length > 5) {
-        const rest = items.slice(4).reduce((s, x) => s + x.value, 0);
-        items = items.slice(0, 4).concat([{ label: 'Otras cuentas', bank: '', value: rest, color: '#7D8892' }]);
-    }
-    const total = items.reduce((s, x) => s + x.value, 0);
-    medallion(svg);
-
-    if (!total) {
-        legend.innerHTML = '<li class="text-muted">Agrega una cuenta para ver tus fondos.</li>';
+function renderLog(txs) {
+    const box = document.getElementById('logList');
+    if (!txs.length) {
+        box.innerHTML = '<div class="empty"><strong>Aún no hay movimientos</strong>Registra el primero con el botón Registrar.</div>';
         return;
     }
-
-    const bandW = items.length > 3 ? 13 : 17;
-    const gap = 6;
-    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    items.forEach((item, i) => {
-        const r = 112 - bandW / 2 - i * (bandW + gap);
-        svg.appendChild(svgEl('circle', { cx: 120, cy: 120, r, fill: 'none', 'stroke-width': 0.6, class: 'track' }));
-        // Barrido mínimo visible (~12°) para cuentas pequeñas; el porcentaje real va en la leyenda
-        const sweep = Math.max(2 * Math.PI * (item.value / total), 0.21);
-        const k = Math.max(24, Math.round(r / 3.2));
-        const g = svgEl('g', { fill: 'none', stroke: item.color, 'stroke-width': 0.95, 'stroke-linecap': 'round' });
-        Array.from({ length: 9 }, (_, j) => (j * 2 * Math.PI) / 9).forEach(phase => {
-            const path = svgEl('path', { d: guillocheBand(r, bandW / 2 - 0.5, sweep, phase, k), class: 'band' });
-            g.appendChild(path);
-            if (!reduce) {
-                path.style.strokeDasharray = '6000';
-                path.style.strokeDashoffset = '6000';
-                requestAnimationFrame(() => requestAnimationFrame(() => { path.style.strokeDashoffset = '0'; }));
-            }
-        });
-        svg.appendChild(g);
-    });
-
-    legend.innerHTML = items.map(x => `
-        <li><span class="ink-dot" style="background:${esc(x.color)}"></span>
-            <span class="name">${esc(x.label)}</span>
-            <span class="amt">${x.bank ? `${esc(x.bank)} · ` : ''}<span class="text-nowrap">${money(x.value)} · ${pct(x.value / total * 100)}</span></span></li>`).join('');
+    let lastDay = null;
+    box.innerHTML = txs.slice(0, 8).map(t => {
+        const k = KIND[t.transaction_type] || KIND.expense;
+        const day = t.transaction_date !== lastDay ? `<div class="log-day">${esc(dayLabel(t.transaction_date))}</div>` : '';
+        lastDay = t.transaction_date;
+        const where = t.transaction_type === 'transfer'
+            ? `${t.source_account_name || ''} → ${t.destination_account_name || ''}`
+            : (t.card_name || t.source_account_name || 'Sin cuenta');
+        return `${day}<a class="log-row" href="/transactions" data-band-key="${esc(t.source_account_name || '')}">
+            <span class="time num">${esc(fmtTime(t.created_at))}</span>
+            <span class="who">${tagFor(t)}<span>${esc(t.description)}</span></span>
+            <span class="amt num ${k.cls}">${amountText(t)}</span>
+            <span class="meta">${esc(t.category_name || k.label)} · ${esc(where)}</span>
+        </a>`;
+    }).join('');
 }
 
 function renderMonths(m) {
-    const max = Math.max(1, ...m.incomes, ...m.expenses);   // una sola escala para los 6 meses
-    document.getElementById('monthBars').innerHTML = m.months.map((month, i) => `
-        <li class="bar-row" aria-label="${esc(month)}: ingresos ${money(m.incomes[i])}, gastos ${money(m.expenses[i])}">
+    const max = Math.max(1, ...m.incomes, ...m.expenses);   // una sola escala para todos los meses
+    document.getElementById('monthList').innerHTML = m.months.map((month, i) => `
+        <li class="month" aria-label="${esc(month)}: ingresos ${money(m.incomes[i])}, gastos ${money(m.expenses[i])}">
             <span class="lbl">${esc(month.slice(0, 3))}</span>
-            <span class="bar-line"><span class="bar in" style="width:${m.incomes[i] / max * 100}%"></span><span class="val">${money(m.incomes[i])}</span></span>
-            <span class="bar-line"><span class="bar out" style="width:${m.expenses[i] / max * 100}%"></span><span class="val">${money(m.expenses[i])}</span></span>
+            <span class="bar" style="width:${m.incomes[i] / max * 100}%"></span><span class="val num">${money(m.incomes[i])}</span>
+            <span class="bar out" style="width:${m.expenses[i] / max * 100}%"></span><span class="val out num">${money(m.expenses[i])}</span>
         </li>`).join('');
 }
 
 function renderCategories(c) {
-    const box = document.getElementById('categoryBars');
+    const box = document.getElementById('catList');
     if (!c.labels.length) {
-        box.innerHTML = '<div class="empty">Sin gastos este mes.</div>';
+        box.innerHTML = '<div class="empty"><strong>Sin gastos este mes</strong>Aquí verás en qué se va tu dinero.</div>';
         return;
     }
-    const max = Math.max(...c.values);
-    box.innerHTML = c.labels.map((label, i) => ({ label, value: c.values[i], color: c.colors[i] }))
-        .sort((a, b) => b.value - a.value).slice(0, 6)
-        .map(x => `
-        <div class="cat-row">
-            <span class="name"><span class="ink-dot" style="background:${esc(x.color)}"></span><span>${esc(x.label)}</span></span>
+    const items = c.labels.map((label, i) => ({ label, value: Number(c.values[i]) })).sort((a, b) => b.value - a.value).slice(0, 6);
+    const total = c.values.reduce((s, v) => s + Number(v), 0);
+    const max = items[0].value;
+    box.innerHTML = items.map(x => `
+        <div class="cat">
+            <span>${esc(x.label)}<span class="share">${pct(x.value / total * 100)}</span></span>
             <span class="num fw-semibold">${money(x.value)}</span>
             <span class="bar" style="width:${x.value / max * 100}%"></span>
         </div>`).join('');
 }
 
-function renderCards(chart, upcoming) {
-    const box = document.getElementById('cardRows');
-    if (!chart.labels.length) {
-        box.innerHTML = '<div class="empty">No tienes tarjetas de crédito registradas.</div>';
-        return;
-    }
-    const dueByName = Object.fromEntries((upcoming || []).map(c => [c.name, c]));
-    box.innerHTML = chart.labels.map((name, i) => {
-        const debt = Number(chart.debts[i]), limit = Number(chart.limits[i]) || 0;
-        const pct = limit ? Math.min(100, Math.max(0, debt / limit * 100)) : 0;
-        const due = dueByName[name];
-        const dueTxt = due && due.days_until_due !== null && due.days_until_due !== undefined
-            ? `<span class="due${due.is_near_due ? ' is-soon' : ''}">${due.days_until_due === 0 ? 'Vence hoy' : `Vence en ${due.days_until_due} días`}</span>` : '';
-        return `
-        <div class="card-row">
-            <span class="name d-flex align-items-start gap-2"><span class="ink-dot mt-1" style="background:${esc(chart.colors[i])}"></span><span><span class="fw-semibold">${esc(name)}</span><span class="bank">${esc((chart.subtitles || [])[i] || '')}</span>${dueTxt ? `<span class="d-block mt-1">${dueTxt}</span>` : ''}</span></span>
-            <span class="num text-end">${money(debt)} <span class="text-muted">de ${money(limit)}</span></span>
-            <span class="track"><span class="bar" style="width:${pct}%; color:${esc(chart.colors[i])}"></span></span>
-        </div>`;
-    }).join('');
-}
-
-function renderRecent(txs) {
-    const body = document.getElementById('recentRows');
-    if (!txs.length) {
-        body.innerHTML = '<tr><td colspan="3" class="empty">Aún no hay movimientos.</td></tr>';
-        return;
-    }
-    const sign = { income: 1, expense: -1 };
-    body.innerHTML = txs.map(t => {
-        const s = sign[t.transaction_type] || 0;
-        const cls = s > 0 ? 'amount-in' : s < 0 ? 'amount-out' : '';
-        const kind = { transfer: 'Transferencia', card_payment: 'Pago de tarjeta' }[t.transaction_type];
-        return `<tr>
-            <td><div class="desc">${esc(t.description)}</div><div class="meta">${fmtDate(t.transaction_date)} · ${esc(kind || t.category_name || 'Sin categoría')}</div></td>
-            <td class="col-acc text-muted">${esc(t.card_name || t.source_account_name || '—')}</td>
-            <td class="amt num ${cls}">${s ? money(Number(t.amount) * s, { sign: true }) : money(t.amount)}</td>
-        </tr>`;
-    }).join('');
-}
-
 async function renderPending() {
     const box = document.getElementById('pendingList');
     try {
-        const res = await authFetch('/api/v1/pending?limit=5');
+        const res = await authFetch('/api/v1/pending?limit=3');
         const items = res.ok ? await res.json() : [];
-        const strip = document.getElementById('pendingStrip');
-        strip.hidden = !items.length;
-        strip.innerHTML = `<span><span class="count">${items.length >= 5 ? '5+' : items.length}</span> ${items.length === 1 ? 'pago por confirmar' : 'pagos por confirmar'}</span><span>Revisar <i class="bi bi-chevron-right" aria-hidden="true"></i></span>`;
         if (!items.length) {
-            box.innerHTML = '<div class="empty"><i class="bi bi-check2-circle" aria-hidden="true"></i>Nada por confirmar.</div>';
+            box.innerHTML = '<div class="empty py-3"><strong>Todo confirmado</strong>Los pagos del iPhone aparecerán aquí.</div>';
             return;
         }
         const seen = new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'));
-        const source = { apple_pay: 'Apple Pay', deuna: 'DeUna', bank: 'Banco', sms: 'SMS' };
         box.innerHTML = items.map(p => {
             const amount = p.amount === null ? 'Sin monto' : money(Number(p.amount) * (p.transaction_type === 'income' ? 1 : -1), { sign: true });
-            return `<a href="/pending#pending-${p.id}" class="pending-item${seen.has(p.id) ? '' : ' is-new'}">
-                <span class="m">${seen.has(p.id) ? '' : '<span class="new">Nuevo</span>'}${esc(p.merchant)}</span>
-                <span class="a num ${p.transaction_type === 'income' ? 'amount-in' : ''}">${amount}</span>
-                <span class="s">${esc(source[p.source] || p.source)} · ${esc(p.suggested_card_name || p.suggested_account_name || 'Sin cuenta')} · ${esc(p.suggested_category_name || 'Sin categoría')}</span>
+            const ink = p.suggested_card_id ? inks.card[p.suggested_card_id] : (p.suggested_account_id ? inks.acc[p.suggested_account_id] : null);
+            const tag = ink ? `<span class="tag" style="--band:${esc(ink)}${p.suggested_card_id ? ';--band-2:var(--ink)' : ''}" aria-hidden="true"><i></i>${p.suggested_card_id ? '<i></i>' : ''}</span>`
+                            : '<span class="tag is-empty" aria-hidden="true"><i></i></span>';
+            return `<a class="log-row pending-row" href="/pending#pending-${p.id}">
+                <span class="time num">${esc(fmtDate(p.occurred_date))}</span>
+                <span class="who">${tag}<span>${esc(p.merchant)}</span>${seen.has(p.id) ? '' : '<span class="new">Nuevo</span>'}</span>
+                <span class="amt num ${p.transaction_type === 'income' ? 'amount-in' : ''}">${amount}</span>
+                <span class="meta">${esc(SOURCES[p.source] || p.source)} · ${esc(p.suggested_card_name || p.suggested_account_name || 'Sin cuenta')}</span>
             </a>`;
         }).join('');
     } catch (e) {
@@ -397,22 +244,24 @@ async function renderPending() {
 
 async function loadDashboard() {
     try {
-        const res = await authFetch('/api/v1/dashboard');
-        const data = await res.json();
-        if (!res.ok) throw new Error(apiError(data, 'No se pudo cargar el resumen.'));
-        renderWorth(data);
-        renderRosette(data.charts.accounts_distribution);
+        const [dashRes, accRes, cardRes] = await Promise.all([
+            authFetch('/api/v1/dashboard'), authFetch('/api/v1/accounts'), authFetch('/api/v1/cards'),
+        ]);
+        const data = await dashRes.json();
+        if (!dashRes.ok) throw new Error(apiError(data, 'No se pudo cargar el resumen.'));
+        if (accRes.ok) (await accRes.json()).forEach(a => { inks.acc[a.id] = a.color; });
+        if (cardRes.ok) (await cardRes.json()).forEach(c => { inks.card[c.id] = c.color; });
+        renderHero(data, data.charts.accounts_distribution);
+        renderLog(data.recent_transactions);
         renderMonths(data.charts.monthly_incomes_vs_expenses);
         renderCategories(data.charts.expenses_by_category);
-        renderCards(data.charts.cards_debt_distribution, data.upcoming_card_payments);
-        renderRecent(data.recent_transactions);
     } catch (err) {
         showAlert('danger', err.message, 0);
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    loadDashboard();
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadDashboard();       // primero las tintas de cuentas y tarjetas
     renderPending();
 });
 </script>

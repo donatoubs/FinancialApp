@@ -2,27 +2,25 @@
 version: 1
 slug: "frontend-templates-dashboard-html"
 primary_target: "frontend/templates/dashboard.html"
-related_targets: ["frontend/templates/base.html","frontend/templates/pending.html","frontend/templates/app.html"]
+related_targets: ["frontend/templates/base.html","frontend/templates/app.html","frontend/templates/pending.html","frontend/templates/transactions.html","frontend/templates/accounts.html"]
 ---
 
-# Surface brief: FinancialApp app shell and Dashboard
+# Surface brief: FinancialApp app shell, Resumen, Movimientos, Cuentas, Analíticas
 
-Scope: the whole signed-in app (shell, Dashboard first, then Pendientes, Movimientos, Cuentas, Tarjetas, Presupuestos) plus login/registro. Mode: Operate.
+Scope: the whole signed-in app plus login/registro, rebuilt as a new visual identity (replaces the storm/black/orange world). Mode: Operate. Theme: automatic light/dark from the device (user-pinned).
 
-Audience and job: the owner and family check what they have, what they owe and how the month goes (Dashboard), and confirm payments arriving from the iPhone (Pendientes). Used equally on iPhone (PWA) and computer.
-
-Constraints: keep each bank's color to identify accounts. Palette and type pinned by the user (second revision, replacing sand/olive/yellow and Bodoni/Public Sans): storm gray, matte black, safety orange; a different typeface. Avoid looking like a generic bank app. No marketing page, no simulation buttons, no hype copy.
+Audience and job: the owner and family check where their money is, what came in and went out, and confirm iPhone payments; equally on iPhone (PWA) and computer. User-pinned brief: premium fintech craft (Revolut, Monzo, Linear, Apple Wallet, Ramp, Mercury as quality bar, never copied); minimal but not empty; strong hierarchy; no generic dashboard cards, decorative charts, purposeless gradients, heavy shadows or rounded-everything. Keep every existing function; invent no financial data. New section: Analíticas (own nav item).
 
 ## Direction contract
 
-THESIS: Money read like an engraved banknote: figures set like denominations and every account printed in its own bank ink. Refuses the category's blue sidebar, four identical KPI cards and donut chart.
+THESIS: A naturalist's field log for money: every account wears its own color band, like a ringed Galápagos bird, and every movement is a precise, timestamped observation. Refuses the card-grid dashboard and the donut.
 
-OWN-WORLD: Light storm-gray ground (#DEE2E5) with near-white storm panels and hairline gray rules; matte black (#1E2023) rail, mobile top bar, tab bar and primary buttons; safety orange (#FF6B1A) reserved for attention only: pending counts, active navigation, new-payment marks, warning actions, link underlines. Bank colors appear only as account inks. Archivo throughout: condensed (wdth 78%) heavy for headline figures and the wordmark, normal width for UI, tabular numerals everywhere. Flat panels, no gradients or glass. Translation of the banknote world: engraving survives as the guilloche center of the funds rosette and the denomination-style figures, rendered in the pinned industrial palette.
+OWN-WORLD: Light: volcanic-ash ground #F3F3F0, basalt ink #16191C, hairline rules; dark: basalt ground #101315 with ash ink. Basalt rail in both themes. One reserved accent, blue-footed-booby turquoise (#2C9FB3 / #45B9CC dark), only for the active and selected. Money direction: deep green in, Sally-Lightfoot red-orange out. Bank colors appear only as account bands. Hanken Grotesk throughout, tabular numerals, figures on an 8px grid. Flat sections divided by rules; corner radius 6px max, mostly square.
 
-STORY: In one glance the user sees net worth, available money and card debt, which account holds what, and whether anything from the iPhone is waiting; one tap reaches Pendientes.
+STORY: The visitor sees the total and how it splits across accounts in one band, knows today's in/out and net, scans the timestamped log, and reaches registering or confirming in one tap.
 
-FIRST VIEWPORT: Desktop: matte black left rail (brand, navigation, pending count in safety orange). Main: net worth figure large at left with available, debt and month savings beneath; at right the funds rosette. Right column: pending queue. Below: latest transactions table and 6-month income/expense bars on one fixed scale. Mobile: top bar, figure, rosette, pending queue, bottom tab bar.
+FIRST VIEWPORT: Desktop: basalt rail left (brand, nav, Registrar). Main left: "Saldo total" with date, the 88px balance, the account band strip with legend, then a facts line (ingresos, gastos, balance neto, deuda tarjetas). Right column: "Por confirmar" then "Registro" of recent movements with time and account tags. Below: income/expense months on one fixed scale and spending by category. Mobile: top bar, balance, bands, facts, pending strip, log, tab bar.
 
-FORM: Papel moneda grabado (sucre banknote engraving), candidate 6 of 7, seed: seed:331611068ab64de7. Signature move: the funds rosette, one concentric guilloche ring per account in its bank ink, arc length proportional to balance, with a legend; replaces the donut. Raises: new payments stay marked in safety orange until seen (gate board); destructive actions isolated (console); all monthly charts share one fixed scale (folio); one tabular numeric voice (datamatics).
+FORM: Bitácora de Galápagos, candidate 7 of 7, seed: seed:331611068ab64de7. Signature move: the account bands, a proportional strip of color bands (one per account, bank ink) that reappears as small stacked tags on every movement and account row; hovering or choosing an account lights its band and dims the others. Raises: selection lights one band (transit); one reserved accent for active only (orienteering); figures aligned to a strict 8px grid (Crouwel); a changed balance updates digit by digit (split-flap).
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance

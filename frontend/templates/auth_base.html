@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{#
+  Diseño compartido de acceso (iniciar sesión, crear cuenta, recuperar contraseña).
+  Izquierda: panel de basalto con el logo de Auren.
+  Derecha: el formulario sobre el fondo, sin caja.
+#}
+{% block body_class %}auth{% endblock %}
+
+{% block body %}
+<div class="auth-layout">
+    <aside class="auth-side">
+        <a href="/login" class="auth-brand"><span class="auren-mark" aria-hidden="true"></span>Auren</a>
+        <div class="auth-emblem"><span class="auren-mark" aria-hidden="true"></span></div>
+        <div class="auth-copy">
+            <p class="auth-claim">Tu dinero, cuenta por cuenta.</p>
+            <ul class="auth-points">
+                <li>Cada cuenta con el color de su banco.</li>
+                <li>Los pagos del iPhone llegan listos para confirmar.</li>
+                <li>Tus datos solo los ves tú.</li>
+            </ul>
+        </div>
+    </aside>
+
+    <main class="auth-main">
+        <div class="auth-form-wrap">
+            <a href="/login" class="auth-brand auth-logo-mobile"><span class="auren-mark" aria-hidden="true"></span>Auren</a>
+            {% block auth %}{% endblock %}
+        </div>
+    </main>
+</div>
+{% endblock %}

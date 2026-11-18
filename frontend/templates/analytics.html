@@ -1,0 +1,211 @@
+{% extends "app.html" %}
+
+{% block title %}Analíticas · FinancialApp{% endblock %}
+
+{% block extra_head %}
+<style>
+.period { display: flex; gap: 8px; }
+.period select { width: auto; }
+.delta { display: block; font-size: 0.75rem; font-weight: 700; letter-spacing: 0; margin-top: 6px; }
+.delta.good { color: var(--income); } .delta.bad { color: var(--expense); } .delta.flat { color: var(--ink-muted); }
+
+/* Evolución: columnas por mes, una sola escala; se puede elegir un mes */
+.evo { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 6px; align-items: end; height: 220px; margin-top: 8px; }
+.evo-month { height: 100%; display: grid; grid-template-rows: 1fr auto; gap: 8px; background: none; border: 0; padding: 0; color: var(--ink-muted); cursor: pointer; border-radius: var(--radius-sm); }
+.evo-bars { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 100%; padding: 0 2px; }
+.evo-bars i { display: block; width: min(14px, 40%); border-radius: 1px 1px 0 0; background: var(--ink); min-height: 2px; transition: height .7s var(--ease-out), opacity .2s ease; }
+.evo-bars i.out { background: var(--expense); }
+.evo-month span { font-size: 0.75rem; font-weight: 600; padding-bottom: 4px; border-bottom: 2px solid transparent; white-space: nowrap; }
+.evo-month em { display: block; font-style: normal; font-size: 0.6875rem; color: var(--ink-faint); height: 14px; }
+.evo-month:hover .evo-bars i { opacity: .8; }
+.evo-month.is-on span { color: var(--ink); border-bottom-color: var(--accent); }
+.evo-month:not(.is-on) .evo-bars i { opacity: .45; }
+.evo-month:focus-visible { outline-offset: 0; }
+
+.two { display: grid; gap: 48px; grid-template-columns: minmax(0, 1fr); margin-top: 48px; }
+@media (min-width: 992px) { .two { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 64px; } }
+.cmp { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 12px 0; border-bottom: 1px solid var(--rule); font-size: 0.875rem; }
+.cmp .track { grid-column: 1 / -1; position: relative; height: 6px; background: var(--surface-2); border-radius: 1px; }
+.cmp .track i { position: absolute; inset: 0 auto 0 0; background: var(--ink-soft); border-radius: 1px; }
+.cmp .track b { position: absolute; top: -3px; width: 2px; height: 12px; background: var(--ink-faint); }
+.cmp .meta { font-size: 0.75rem; color: var(--ink-muted); }
+.merchant { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 2px 12px; padding: 12px 0; border-bottom: 1px solid var(--rule); align-items: baseline; }
+.merchant .n { color: var(--ink-faint); font-weight: 700; font-size: 0.8125rem; }
+.merchant .meta { grid-column: 2; font-size: 0.75rem; color: var(--ink-muted); }
+
+.week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; align-items: end; height: 140px; }
+.week div { height: 100%; display: grid; grid-template-rows: 1fr auto; gap: 6px; text-align: center; font-size: 0.75rem; color: var(--ink-muted); font-weight: 600; }
+.week div > span { display: flex; align-items: flex-end; justify-content: center; }
+.week i { display: block; width: 60%; max-width: 36px; background: var(--ink-soft); border-radius: 1px 1px 0 0; min-height: 2px; }
+.week .peak i { background: var(--ink); }
+.week i { opacity: .55; } .week .peak i { opacity: 1; }
+.habit-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px 32px; margin-top: 24px; }
+.habit-facts dt { font-size: 0.75rem; font-weight: 600; color: var(--ink-muted); }
+.habit-facts dd { margin: 4px 0 0; font-weight: 700; font-size: 1.125rem; }
+.habit-facts dd small { display: block; font-weight: 500; font-size: 0.75rem; color: var(--ink-muted); }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"] %}
+<div class="page-head">
+    <div>
+        <h1>Analíticas</h1>
+        <p id="periodNote">Cómo entra y sale tu dinero, mes a mes.</p>
+    </div>
+    <div class="period">
+        <select class="form-select form-select-sm" id="monthSelect" aria-label="Mes">
+            {% for m in months %}<option value="{{ loop.index }}">{{ m }}</option>{% endfor %}
+        </select>
+        <select class="form-select form-select-sm" id="yearSelect" aria-label="Año"></select>
+    </div>
+</div>
+
+<div id="globalAlert" class="alert d-none" role="alert"></div>
+
+<dl class="ledger" id="summary">
+    <div><dt>Ingresos</dt><dd><span class="skeleton"></span></dd></div>
+    <div><dt>Gastos</dt><dd><span class="skeleton"></span></dd></div>
+    <div><dt>Balance neto</dt><dd><span class="skeleton"></span></dd></div>
+    <div><dt>Gasto diario promedio</dt><dd><span class="skeleton"></span></dd></div>
+</dl>
+
+<section class="section" aria-labelledby="evoTitle">
+    <div class="panel-head">
+        <h2 class="section-title" id="evoTitle">Evolución de ingresos y gastos</h2>
+        <div class="d-flex gap-3 small text-muted"><span><span class="ink-dot" style="background:var(--ink)"></span> Ingresos</span><span><span class="ink-dot" style="background:var(--expense)"></span> Gastos</span></div>
+    </div>
+    <div class="evo" id="evo" role="group" aria-label="Elige un mes"></div>
+</section>
+
+<div class="two">
+    <section class="section" aria-labelledby="catTitle">
+        <div class="panel-head">
+            <h2 class="section-title" id="catTitle">Gastos por categoría</h2>
+            <span class="small text-muted" id="catNote"></span>
+        </div>
+        <div id="catList"></div>
+    </section>
+    <section class="section" aria-labelledby="merchTitle">
+        <div class="panel-head"><h2 class="section-title" id="merchTitle">Dónde más gastas</h2></div>
+        <div id="merchantList"></div>
+    </section>
+</div>
+
+<section class="section" style="margin-top:48px" aria-labelledby="habitTitle">
+    <div class="panel-head">
+        <h2 class="section-title" id="habitTitle">Hábitos de consumo</h2>
+        <span class="small text-muted" id="habitNote"></span>
+    </div>
+    <div class="week" id="week"></div>
+    <dl class="habit-facts" id="habitFacts"></dl>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const monthSel = document.getElementById('monthSelect');
+const yearSel = document.getElementById('yearSelect');
+
+function deltaChip(value, higherIsGood) {
+    if (value === null || value === undefined) return '<span class="delta flat">Sin mes anterior para comparar</span>';
+    const up = value > 0;
+    const cls = value === 0 ? 'flat' : (up === higherIsGood ? 'good' : 'bad');
+    return `<span class="delta ${cls}"><i class="bi ${up ? 'bi-arrow-up-short' : value < 0 ? 'bi-arrow-down-short' : 'bi-dash'}" aria-hidden="true"></i>${pct(Math.abs(value))} vs. mes anterior</span>`;
+}
+
+function render(d) {
+    const s = d.summary;
+    document.getElementById('periodNote').textContent = `${d.period.label} comparado con ${d.period.previous_label}.`;
+    document.getElementById('summary').innerHTML = `
+        <div><dt>Ingresos</dt><dd class="amount-in">${money(s.income, { sign: true })}${deltaChip(s.income_delta, true)}</dd></div>
+        <div><dt>Gastos</dt><dd class="amount-out">${money(-s.expense, { sign: true })}${deltaChip(s.expense_delta, false)}</dd></div>
+        <div><dt>Balance neto</dt><dd class="${s.net < 0 ? 'amount-out' : ''}">${money(s.net, { sign: true })}<small>Antes ${money(s.previous_net, { sign: true })}</small></dd></div>
+        <div><dt>Gasto diario promedio</dt><dd>${money(d.habits.daily_average)}<small>${s.transactions} movimientos en el mes</small></dd></div>`;
+
+    // Evolución
+    // Desde el primer mes con datos (mínimo 6, y en el celular solo los últimos 6)
+    let hist = d.history;
+    const firstData = hist.findIndex(h => h.income || h.expense);
+    const keep = Math.max(6, firstData < 0 ? 6 : hist.length - firstData);
+    hist = hist.slice(-keep);
+    if (matchMedia('(max-width: 575.98px)').matches) hist = hist.slice(-6);
+    const max = Math.max(1, ...hist.flatMap(h => [h.income, h.expense]));
+    const evo = document.getElementById('evo');
+    evo.style.setProperty('--n', hist.length);
+    const SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    evo.innerHTML = hist.map((h, i) => `
+        <button type="button" class="evo-month${h.year === d.period.year && h.month === d.period.month ? ' is-on' : ''}" data-y="${h.year}" data-m="${h.month}"
+                aria-label="${esc(h.label)}: ingresos ${money(h.income)}, gastos ${money(h.expense)}" title="Ingresos ${money(h.income)} · Gastos ${money(h.expense)}">
+            <span class="evo-bars"><i style="height:${h.income / max * 100}%"></i><i class="out" style="height:${h.expense / max * 100}%"></i></span>
+            <span><em>${i === 0 || h.month === 1 ? h.year : ''}</em>${SHORT[h.month - 1]}</span>
+        </button>`).join('');
+
+    // Categorías con el mes anterior como referencia
+    const cats = d.categories;
+    document.getElementById('catNote').textContent = cats.length ? `La marca indica ${d.period.previous_label.split(' ')[0].toLowerCase()}` : '';
+    const cmax = Math.max(1, ...cats.flatMap(c => [c.amount, c.previous]));
+    document.getElementById('catList').innerHTML = cats.length ? cats.slice(0, 8).map(c => {
+        const diff = c.amount - c.previous;
+        const note = c.previous ? `${diff > 0 ? '+' : diff < 0 ? '−' : ''}${money(Math.abs(diff))} vs. mes anterior` : 'Nuevo este mes';
+        return `<div class="cmp">
+            <span class="fw-semibold">${esc(c.name)}</span><span class="num fw-semibold">${money(c.amount)}</span>
+            <span class="track" aria-hidden="true"><i style="width:${c.amount / cmax * 100}%"></i>${c.previous ? `<b style="left:${c.previous / cmax * 100}%"></b>` : ''}</span>
+            <span class="meta">${note}</span>
+        </div>`;
+    }).join('') : '<div class="empty"><strong>Sin gastos en este mes</strong>Elige otro mes en la evolución.</div>';
+
+    // Comercios
+    const ms = d.top_merchants;
+    document.getElementById('merchantList').innerHTML = ms.length ? ms.map((m, i) => `
+        <div class="merchant">
+            <span class="n num">${i + 1}</span>
+            <span class="fw-semibold">${esc(m.name)}</span>
+            <span class="num fw-semibold">${money(m.amount)}</span>
+            <span class="meta">${m.count} ${m.count === 1 ? 'compra' : 'compras'} · ${pct(m.amount / s.expense * 100)} del gasto</span>
+        </div>`).join('') : '<div class="empty"><strong>Sin comercios este mes</strong></div>';
+
+    // Hábitos
+    const h = d.habits;
+    const wmax = Math.max(1, ...h.weekdays.map(w => w.amount));
+    const peak = h.weekdays.reduce((a, b) => (b.amount > a.amount ? b : a), h.weekdays[0]);
+    document.getElementById('habitNote').textContent = `Desde el ${fmtDate(h.since)}`;
+    document.getElementById('week').innerHTML = h.weekdays.map(w => `
+        <div class="${w === peak && w.amount ? 'peak' : ''}" title="${esc(w.label)}: ${money(w.amount)} en ${w.count} gastos">
+            <span><i style="height:${w.amount / wmax * 100}%"></i></span>${esc(w.label)}
+        </div>`).join('');
+    document.getElementById('habitFacts').innerHTML = `
+        <div><dt>Día que más gastas</dt><dd>${peak.amount ? esc(peak.label) : '—'}<small>${peak.amount ? money(peak.amount) + ' en el periodo' : 'Sin datos'}</small></dd></div>
+        <div><dt>Ticket promedio</dt><dd>${money(h.average_ticket)}<small>${h.expense_count} gastos este mes</small></dd></div>
+        <div><dt>Gasto más grande</dt><dd>${h.largest ? money(h.largest.amount) : '—'}<small>${h.largest ? `${esc(h.largest.description)} · ${fmtDate(h.largest.date)}` : 'Sin gastos'}</small></dd></div>`;
+}
+
+async function load() {
+    try {
+        const res = await authFetch(`/api/v1/analytics?month=${monthSel.value}&year=${yearSel.value}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(apiError(data, 'No se pudieron cargar las analíticas.'));
+        render(data);
+    } catch (err) {
+        showAlert('danger', err.message, 0);
+    }
+}
+
+document.getElementById('evo').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-m]');
+    if (!b) return;
+    monthSel.value = b.dataset.m;
+    yearSel.value = b.dataset.y;
+    load();
+});
+[monthSel, yearSel].forEach(el => el.addEventListener('change', load));
+
+document.addEventListener('DOMContentLoaded', () => {
+    const now = new Date();
+    for (let y = now.getFullYear() - 2; y <= now.getFullYear(); y++) yearSel.insertAdjacentHTML('beforeend', `<option value="${y}">${y}</option>`);
+    yearSel.value = now.getFullYear();
+    monthSel.value = now.getMonth() + 1;
+    load();
+});
+</script>
+{% endblock %}

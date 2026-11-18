@@ -1,21 +1,81 @@
 /*
  * FinancialApp: utilidades compartidas por todas las páginas de la app.
  * Sesión, peticiones autenticadas, formato de dinero, escape de HTML,
- * contador de pendientes y perfil de usuario.
+ * contador de pendientes y preferencias del dispositivo.
  */
 
-const PUBLIC_PATHS = ['/login', '/register'];
-const token = localStorage.getItem('financial_token');
-const user = JSON.parse(localStorage.getItem('financial_user') || '{}');
+const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/reset-password', '/terms'];
+
+// La sesión vive en localStorage ("mantener la sesión iniciada") o en sessionStorage (se cierra con el navegador)
+function sessionStore() {
+    return localStorage.getItem('financial_token') ? localStorage : sessionStorage;
+}
+let token = sessionStore().getItem('financial_token');
+const user = JSON.parse(sessionStore().getItem('financial_user') || '{}');
+
+function saveSession(newToken, newUser, remember) {
+    clearSession();
+    const store = remember ? localStorage : sessionStorage;
+    store.setItem('financial_token', newToken);
+    if (newUser) store.setItem('financial_user', JSON.stringify(newUser));
+}
+
+/** Reemplaza el token de la sesión actual (p. ej. tras cambiar la contraseña). */
+function replaceToken(newToken) {
+    sessionStore().setItem('financial_token', newToken);
+    token = newToken;
+}
+
+function saveUser(newUser) {
+    sessionStore().setItem('financial_user', JSON.stringify(newUser));
+    Object.assign(user, newUser);
+    document.querySelectorAll('[data-user-name]').forEach(el => { el.textContent = newUser.full_name; });
+}
+
+function clearSession() {
+    ['financial_token', 'financial_user'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); });
+}
 
 if (!PUBLIC_PATHS.includes(window.location.pathname) && !token) {
     window.location.replace('/login');
 }
 
 function logout() {
-    localStorage.removeItem('financial_token');
-    localStorage.removeItem('financial_user');
+    clearSession();
     window.location.href = '/login';
+}
+
+/** Valida un formulario con los mensajes de cada campo; marca errores y aciertos. */
+function validateFields(form) {
+    let ok = true;
+    form.querySelectorAll('input, select, textarea').forEach(el => {
+        if (!el.willValidate || el.type === 'hidden') return;
+        const valid = el.checkValidity();
+        el.classList.toggle('is-invalid', !valid);
+        el.classList.toggle('is-valid', valid && el.type !== 'checkbox' && el.type !== 'password' && el.value !== '');
+        if (!valid && ok) { el.focus(); ok = false; }
+    });
+    return ok;
+}
+
+// Quita la marca de error en cuanto el usuario corrige el campo
+document.addEventListener('input', (e) => {
+    if (e.target.classList?.contains('is-invalid') && e.target.checkValidity()) e.target.classList.remove('is-invalid');
+});
+
+/** Estado de carga de un botón: deshabilitado con texto y rueda. */
+function setLoading(btn, loading, text) {
+    if (!btn) return;
+    if (loading) {
+        btn.dataset.label = btn.dataset.label || btn.innerHTML;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>${esc(text || 'Guardando…')}`;
+        btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
+    } else {
+        if (btn.dataset.label) btn.innerHTML = btn.dataset.label;
+        btn.disabled = false;
+        btn.removeAttribute('aria-busy');
+    }
 }
 
 /** fetch con el token del usuario; si la sesión expiró vuelve al login. */
@@ -51,6 +111,7 @@ function fmtDate(iso) {
     if (!iso) return '';
     const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);
     if (!y || !m || !d) return String(iso);
+    if (getPrefs().dateFormat === 'numeric') return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
     return `${d} ${MONTHS_SHORT[m - 1]}${y === new Date().getFullYear() ? '' : ` ${y}`}`;
 }
 
@@ -65,6 +126,83 @@ function parseAmountInput(text) {
     if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
     const n = Number(t);
     return t && Number.isFinite(n) && n > 0 ? n.toFixed(2) : '';
+}
+
+/** Hora local (Ecuador) de un datetime ISO de la API: "14:32" */
+function fmtTime(isoDateTime) {
+    if (!isoDateTime) return '';
+    const d = new Date(isoDateTime);
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Guayaquil' });
+}
+
+/** "Hoy", "Ayer" o la fecha corta, para agrupar movimientos */
+function dayLabel(iso) {
+    const today = new Date();
+    const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+    if (iso === fmt(today)) return 'Hoy';
+    if (iso === fmt(yesterday)) return 'Ayer';
+    return fmtDate(iso);
+}
+
+/**
+ * Anillas de cuenta: franja proporcional (una banda por cuenta con la tinta de su banco)
+ * y su leyenda. Al pasar sobre una cuenta su banda se ilumina y las demás se atenúan.
+ * items: [{ label, sub, value, color }]
+ */
+function renderBands(stripEl, legendEl, items) {
+    const total = items.reduce((s, x) => s + Math.max(0, x.value), 0);
+    const list = items.filter(x => x.value > 0);
+    if (!total || !list.length) {
+        stripEl.innerHTML = '';
+        legendEl.innerHTML = '<li class="text-muted">Agrega una cuenta para ver cómo se reparte tu dinero.</li>';
+        return;
+    }
+    stripEl.innerHTML = list.map((x, i) =>
+        `<li data-band="${i}" data-key="${esc(x.key ?? x.label)}" style="--share:${x.value / total};--band:${esc(x.color)}" title="${esc(x.label)} · ${money(x.value)}"></li>`).join('');
+    legendEl.innerHTML = list.map((x, i) => `
+        <li data-band="${i}" data-key="${esc(x.key ?? x.label)}" tabindex="0" style="--band:${esc(x.color)}">
+            <span class="sw"></span><span><strong>${esc(x.label)}</strong>
+            <span class="amt">${x.sub ? `${esc(x.sub)} · ` : ''}<span class="text-nowrap">${money(x.value)} · ${pct(x.value / total * 100)}</span></span></span>
+        </li>`).join('');
+    const focus = (i) => {
+        [stripEl, legendEl].forEach(el => {
+            el.classList.toggle('is-focus', i !== null);
+            el.querySelectorAll('[data-band]').forEach(n => n.classList.toggle('is-on', n.dataset.band === String(i)));
+        });
+    };
+    [stripEl, legendEl].forEach(el => {
+        el.onmouseover = e => { const n = e.target.closest('[data-band]'); if (n) focus(n.dataset.band); };
+        el.onfocusin = e => { const n = e.target.closest('[data-band]'); if (n) focus(n.dataset.band); };
+        el.onmouseleave = () => focus(null);
+        el.onfocusout = () => focus(null);
+    });
+    // Otras filas de la página (cuentas, registro) iluminan su banda con data-band-key
+    const byKey = key => stripEl.querySelector(`[data-key="${CSS.escape(String(key))}"]`)?.dataset.band ?? null;
+    document.querySelectorAll('[data-band-key]').forEach(row => {
+        row.addEventListener('mouseenter', () => focus(byKey(row.dataset.bandKey)));
+        row.addEventListener('mouseleave', () => focus(null));
+    });
+}
+
+/**
+ * Muestra una cifra como dígitos; si cambió desde la última visita (clave en localStorage),
+ * los dígitos que cambiaron se actualizan uno a uno.
+ */
+function renderFigure(el, value, storageKey) {
+    const text = money(value);
+    const previous = storageKey ? localStorage.getItem(storageKey) : null;
+    const i = text.lastIndexOf(',');
+    const chars = [...text.slice(0, i)];
+    const prevChars = previous ? [...previous.slice(0, previous.lastIndexOf(','))] : chars;
+    const offset = prevChars.length - chars.length;
+    let flipIndex = 0;
+    el.innerHTML = chars.map((c, k) => {
+        const changed = previous && previous !== text && prevChars[k + offset] !== c;
+        const delay = changed ? `style="animation-delay:${(flipIndex++) * 60}ms"` : '';
+        return `<span class="digit${changed ? ' is-flip' : ''}" ${delay}>${esc(c)}</span>`;
+    }).join('') + `<small>${esc(text.slice(i))}</small>`;
+    if (storageKey) localStorage.setItem(storageKey, text);
 }
 
 /** 84 -> "84%", 10.5 -> "10,5%" */
@@ -122,75 +260,20 @@ async function refreshPendingBadge() {
 function initShell() {
     document.querySelectorAll('[data-user-name]').forEach(el => { el.textContent = user.full_name || 'Usuario'; });
     document.querySelectorAll('[data-action="logout"]').forEach(el => el.addEventListener('click', logout));
-    document.querySelectorAll('[data-action="profile"]').forEach(el => el.addEventListener('click', openProfile));
-
-    const form = document.getElementById('profileForm');
-    if (form) {
-        bindPasswordToggle('toggleProfilePwd', 'profileNewPassword');
-        form.addEventListener('submit', saveProfile);
-    }
+    applyPreferences();
     refreshPendingBadge();
 }
 
-function openProfile() {
-    const modal = document.getElementById('profileModal');
-    if (!modal) return;
-    document.getElementById('profileAlert').className = 'alert d-none';
-    document.getElementById('profileFullName').value = user.full_name || '';
-    document.getElementById('profileEmail').value = user.email || '';
-    document.getElementById('profileCurrency').value = user.currency_preference || 'USD';
-    document.getElementById('profileNewPassword').value = '';
-    document.getElementById('profileCurrentPassword').value = '';
-    document.getElementById('profileConfirmPassword').value = '';
-    bootstrap.Modal.getOrCreateInstance(modal).show();
+// Preferencias guardadas en este dispositivo (Perfil ➝ Preferencias)
+function getPrefs() {
+    try { return JSON.parse(localStorage.getItem('financial_prefs') || '{}'); } catch (e) { return {}; }
 }
-
-async function saveProfile(event) {
-    event.preventDefault();
-    const alertBox = document.getElementById('profileAlert');
-    const btn = event.submitter;
-    const newPwd = document.getElementById('profileNewPassword').value;
-    if (newPwd && newPwd !== document.getElementById('profileConfirmPassword').value) {
-        alertBox.className = 'alert alert-danger';
-        alertBox.textContent = 'Las contraseñas no coinciden.';
-        return;
-    }
-    const payload = {
-        full_name: document.getElementById('profileFullName').value.trim(),
-        currency_preference: document.getElementById('profileCurrency').value,
-    };
-    if (newPwd) {
-        const current = document.getElementById('profileCurrentPassword').value;
-        if (!current) {
-            alertBox.className = 'alert alert-danger';
-            alertBox.textContent = 'Escribe tu contraseña actual para cambiarla.';
-            return;
-        }
-        payload.password = newPwd;
-        payload.current_password = current;
-    }
-
-    btn.disabled = true;
-    try {
-        const res = await authFetch('/api/v1/auth/me', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(apiError(data, 'No se pudo actualizar el perfil.'));
-        localStorage.setItem('financial_user', JSON.stringify(data));
-        Object.assign(user, data);
-        document.querySelectorAll('[data-user-name]').forEach(el => { el.textContent = data.full_name; });
-        alertBox.className = 'alert alert-success';
-        alertBox.textContent = 'Perfil actualizado.';
-        setTimeout(() => bootstrap.Modal.getInstance(document.getElementById('profileModal'))?.hide(), 900);
-    } catch (err) {
-        alertBox.className = 'alert alert-danger';
-        alertBox.textContent = err.message;
-    } finally {
-        btn.disabled = false;
-    }
+function applyPreferences() {
+    const prefs = getPrefs();
+    const root = document.documentElement;
+    if (prefs.theme === 'light' || prefs.theme === 'dark') root.dataset.theme = prefs.theme;
+    else delete root.dataset.theme;
+    root.classList.toggle('hide-amounts', Boolean(prefs.hideAmounts));
 }
 
 /**

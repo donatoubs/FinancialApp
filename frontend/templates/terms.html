@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Términos y privacidad · FinancialApp{% endblock %}
+{% block body_class %}doc{% endblock %}
+
+{% block body %}
+<main class="doc-main">
+    <a href="/login" class="auth-logo">FinancialApp</a>
+    <h1>Términos de uso y privacidad</h1>
+    <p class="doc-lead">FinancialApp es una herramienta privada para que una persona o una familia registre y organice su propio dinero. Esto es lo que necesitas saber antes de usarla.</p>
+
+    <h2>Qué guarda la app</h2>
+    <ul>
+        <li>Tu nombre, correo, teléfono (si lo agregas) y moneda preferida.</li>
+        <li>Las cuentas, tarjetas (solo los últimos 4 dígitos), movimientos, categorías y presupuestos que registres.</li>
+        <li>Los pagos que envíen tus atajos del iPhone hasta que los confirmes o descartes.</li>
+    </ul>
+    <p>Nunca se guardan números completos de tarjeta, claves bancarias, PIN ni CVV.</p>
+
+    <h2>Quién ve tus datos</h2>
+    <p>Solo tú. Cada cuenta de FinancialApp ve únicamente su propia información. La app no vende, comparte ni envía tus datos a terceros, y no se conecta a tu banco.</p>
+
+    <h2>Tus derechos</h2>
+    <ul>
+        <li>Puedes descargar todos tus datos desde <b>Perfil ➝ Privacidad y datos</b>.</li>
+        <li>Puedes eliminar tu cuenta y todos tus datos de forma permanente desde la misma sección.</li>
+    </ul>
+
+    <h2>Responsabilidad</h2>
+    <p>FinancialApp te ayuda a llevar tus cuentas, pero no es un banco ni da asesoría financiera. Los saldos dependen de lo que registres; revísalos con los estados de cuenta de tu banco.</p>
+
+    <h2>Seguridad</h2>
+    <p>Las contraseñas se guardan cifradas. Usa una contraseña que no repitas en otros sitios y cierra la sesión en dispositivos que no sean tuyos.</p>
+
+    <p class="doc-note">Este texto describe cómo funciona la app hoy. Quien la administra puede actualizarlo; los cambios se publicarán en esta página.</p>
+    <p><a href="javascript:history.back()"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Volver</a></p>
+</main>
+{% endblock %}

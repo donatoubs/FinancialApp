@@ -8,7 +8,10 @@
 .period select { width: auto; }
 .notices { margin: 0 0 8px; padding: 0; list-style: none; border-top: 1px solid var(--rule-strong); }
 .notice { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 16px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rule); }
-.notice strong::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--safety); margin-right: 8px; vertical-align: 1px; }
+.notice strong::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: var(--ink); margin-right: 8px; vertical-align: 1px; }
+.budget-rows .ink-row { grid-template-columns: minmax(0, 1fr) auto; }
+.budget-rows .ink-row .ink { display: none; }
+.budget-rows .ink-row .detail { grid-column: 1 / -1; }
 .notice.is-danger strong::before { background: var(--expense); }
 .notice strong { font-size: 0.9375rem; }
 .notice span { grid-column: 1; font-size: 0.8125rem; color: var(--ink-muted); }
@@ -51,10 +54,10 @@
         <h2 class="section-title" id="budgetsTitle">Por categoría</h2>
         <span class="small text-muted" id="budgetCountLabel"></span>
     </div>
-    <div class="rows" id="budgetsList"><div class="empty">Cargando…</div></div>
+    <div class="rows budget-rows" id="budgetsList"><div class="empty">Cargando…</div></div>
 </section>
 
-<section class="panel" aria-labelledby="exportTitle">
+<section class="section" aria-labelledby="exportTitle">
     <h2 class="section-title mb-1" id="exportTitle">Exportar movimientos</h2>
     <p class="small text-muted mb-3">Archivo CSV que se abre en Excel o Numbers.</p>
     <div class="export">
@@ -209,7 +212,7 @@ function renderBudgets() {
         const rem = Number(b.remaining_amount);
         const state = b.status === 'exceeded' ? '<span class="chip chip-danger">Superado</span>'
                     : b.status === 'warning' ? '<span class="chip chip-alert">Cerca del límite</span>' : '';
-        const ink = b.status === 'exceeded' ? 'var(--expense)' : b.status === 'warning' ? 'var(--safety)' : 'var(--carbon-500)';
+        const ink = b.status === 'exceeded' ? 'var(--expense)' : b.status === 'warning' ? 'var(--ink)' : 'var(--ink-faint)';
         return `
         <div class="ink-row" style="--ink-color:${ink}">
             <span class="ink" aria-hidden="true"></span>

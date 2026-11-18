@@ -25,7 +25,13 @@
 
 <div id="globalAlert" class="alert d-none" role="alert"></div>
 
-<dl class="ledger" id="ledger"><div><dt>Saldo total</dt><dd>—</dd></div></dl>
+<dl class="ledger mb-4" id="ledger"><div><dt>Saldo total</dt><dd><span class="skeleton"></span></dd></div></dl>
+
+<section class="mb-5" aria-label="Dónde está tu dinero">
+    <ul class="bands" id="accBands" aria-hidden="true"></ul>
+    <ul class="band-legend" id="accLegend" aria-label="Saldo por cuenta"></ul>
+</section>
+
 
 <div class="filters" role="group" aria-label="Filtrar cuentas">
     <button class="btn btn-sm btn-outline-secondary active" data-filter="all">Todas</button>
@@ -214,6 +220,11 @@ async function loadAccounts() {
             + `<div><dt>Efectivo</dt><dd>${money(cash)}</dd></div>`
             + `<div><dt>Cuentas activas</dt><dd>${s.total_active_accounts}<small>de ${s.total_accounts} registradas</small></dd></div>`;
         renderAccounts();
+        renderBands(document.getElementById('accBands'), document.getElementById('accLegend'),
+            allAccounts.filter(a => a.is_active && a.currency === 'USD').map(a => ({
+                key: a.id, label: a.name, sub: a.account_type === 'cash' ? 'Efectivo' : a.bank_name,
+                value: Number(a.current_balance) || 0, color: a.color || '#7C8A86',
+            })));
     } catch (err) {
         showAlert('danger', err.message, 0);
     }
@@ -230,7 +241,7 @@ function renderAccounts() {
         const sub = [a.account_type === 'cash' ? null : a.bank_name, TYPE_LABEL[a.account_type], a.account_number_mask]
             .filter(Boolean).map(esc).join(' · ');
         return `
-        <div class="ink-row" style="--ink-color:${esc(a.color || '#4A5058')}">
+        <div class="ink-row" data-band-key="${esc(a.id)}" style="--ink-color:${esc(a.color || '#4A5058')}">
             <span class="ink" aria-hidden="true"></span>
             <div>
                 <div class="title">${esc(a.name)} ${a.is_active ? '' : '<span class="chip">Inactiva</span>'}</div>

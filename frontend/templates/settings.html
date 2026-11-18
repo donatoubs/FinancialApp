@@ -1,0 +1,443 @@
+{% extends "app.html" %}
+
+{% block title %}Perfil y configuración · FinancialApp{% endblock %}
+
+{% block extra_head %}
+<style>
+.settings { display: grid; gap: 32px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 992px) { .settings { grid-template-columns: 220px minmax(0, 1fr); gap: 56px; } }
+.settings-nav { display: flex; gap: 0; overflow-x: auto; border-bottom: 1px solid var(--rule-strong); margin: 0 -16px; padding: 0 16px; scrollbar-width: none; }
+.settings-nav a { flex: none; padding: 10px 12px; color: var(--ink-muted); text-decoration: none; font-weight: 600; font-size: 0.875rem; border-bottom: 2px solid transparent; white-space: nowrap; }
+.settings-nav a.is-active { color: var(--ink); border-bottom-color: var(--accent); }
+@media (min-width: 992px) {
+    .settings-nav { flex-direction: column; border-bottom: 0; margin: 0; padding: 0; position: sticky; top: 40px; align-self: start; }
+    .settings-nav a { border-bottom: 0; border-left: 2px solid transparent; padding: 9px 14px; border-radius: 0; }
+    .settings-nav a.is-active { border-left-color: var(--accent); background: var(--surface-2); }
+}
+.pane { max-width: 640px; }
+.pane[hidden] { display: none; }
+.pane h2 { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 4px; }
+.pane > p.lead-text { color: var(--ink-muted); margin: 0 0 28px; }
+.block { border-top: 1px solid var(--rule-strong); padding: 20px 0 28px; }
+.block h3 { font-size: 0.9375rem; font-weight: 700; margin: 0 0 4px; }
+.block > p { color: var(--ink-muted); font-size: 0.875rem; margin: 0 0 16px; }
+.avatar { width: 64px; height: 64px; border-radius: var(--radius); background: var(--ink); color: var(--ground); display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; flex: none; }
+.who { display: flex; gap: 16px; align-items: center; margin-bottom: 24px; }
+.who strong { display: block; font-size: 1.0625rem; }
+.who div span { color: var(--ink-muted); font-size: 0.875rem; }
+.kv { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 10px 16px; margin: 0; font-size: 0.875rem; }
+.kv dt { color: var(--ink-muted); font-weight: 600; }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+.pending-tag { display: inline-block; font-size: 0.6875rem; font-weight: 700; color: var(--ink-muted); border: 1px solid var(--rule-strong); border-radius: var(--radius-sm); padding: 1px 6px; vertical-align: 1px; margin-left: 6px; }
+.opt { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+.opt:last-child { border-bottom: 0; }
+.opt .t { font-weight: 600; }
+.opt .d { grid-column: 1; font-size: 0.8125rem; color: var(--ink-muted); }
+.seg { display: inline-flex; border: 1px solid var(--rule-strong); border-radius: var(--radius); overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 7px 12px; font-size: 0.8125rem; font-weight: 600; color: var(--ink-muted); min-height: 34px; }
+.seg button + button { border-left: 1px solid var(--rule-strong); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--ground); }
+.saved { font-size: 0.8125rem; color: var(--income); font-weight: 600; opacity: 0; transition: opacity .2s ease; }
+.saved.is-on { opacity: 1; }
+.danger-zone.is-confirming .confirm-stack { display: block; }
+@media (max-width: 575.98px) { .kv { grid-template-columns: minmax(0, 1fr); gap: 2px; } .kv dd { margin-bottom: 10px; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Perfil y configuración</h1>
+        <p>Tu información, seguridad, preferencias y datos.</p>
+    </div>
+</div>
+
+<div id="globalAlert" class="alert d-none" role="alert"></div>
+
+<div class="settings">
+    <nav class="settings-nav" aria-label="Secciones de configuración">
+        <a href="#info" data-pane="info">Mi información</a>
+        <a href="#seguridad" data-pane="seguridad">Seguridad</a>
+        <a href="#preferencias" data-pane="preferencias">Preferencias</a>
+        <a href="#notificaciones" data-pane="notificaciones">Notificaciones</a>
+        <a href="#datos" data-pane="datos">Privacidad y datos</a>
+    </nav>
+
+    <div>
+        <!-- MI INFORMACIÓN -->
+        <section class="pane" id="pane-info" aria-labelledby="infoTitle">
+            <h2 id="infoTitle">Mi información</h2>
+            <p class="lead-text">Así te identifica la app.</p>
+            <div class="who">
+                <span class="avatar" id="avatar" aria-hidden="true">—</span>
+                <div><strong data-user-name>Usuario</strong><span id="infoEmail"></span><br><span id="infoSince"></span></div>
+            </div>
+            <div class="block">
+                <h3>Editar información</h3>
+                <form id="infoForm" novalidate>
+                    <div class="field">
+                        <label class="form-label" for="infoName">Nombre completo</label>
+                        <input class="form-control" id="infoName" required minlength="2" maxlength="100" autocomplete="name">
+                        <div class="invalid-feedback">Escribe tu nombre (mínimo 2 letras).</div>
+                    </div>
+                    <div class="field">
+                        <label class="form-label" for="infoPhone">Teléfono <span class="text-muted fw-normal">(opcional)</span></label>
+                        <input class="form-control" id="infoPhone" type="tel" maxlength="30" pattern="[0-9\s+\(\)\-]*" autocomplete="tel" placeholder="+593 99 999 9999">
+                        <div class="invalid-feedback">Usa solo números, espacios, +, guiones o paréntesis.</div>
+                    </div>
+                    <div class="field">
+                        <label class="form-label" for="infoEmailField">Correo</label>
+                        <input class="form-control" id="infoEmailField" type="email" readonly>
+                        <div class="form-text">Cambiar el correo todavía no es posible <span class="pending-tag">Pendiente</span></div>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <button type="submit" class="btn btn-primary" id="infoSave">Guardar cambios</button>
+                        <span class="saved" id="infoSaved">Guardado</span>
+                    </div>
+                </form>
+            </div>
+            <div class="block">
+                <h3>Foto de perfil <span class="pending-tag">Pendiente</span></h3>
+                <p>Por ahora se muestran tus iniciales. Subir una foto requiere un lugar donde guardar imágenes, que la app aún no tiene.</p>
+            </div>
+        </section>
+
+        <!-- SEGURIDAD -->
+        <section class="pane" id="pane-seguridad" aria-labelledby="secTitle" hidden>
+            <h2 id="secTitle">Seguridad</h2>
+            <p class="lead-text">Protege el acceso a tu información financiera.</p>
+            <div class="block">
+                <h3>Cambiar contraseña</h3>
+                <p>Al cambiarla se cierran las sesiones abiertas en tus otros dispositivos.</p>
+                <form id="pwdForm" novalidate>
+                    <div class="field">
+                        <label class="form-label" for="pwdCurrent">Contraseña actual</label>
+                        <input class="form-control" id="pwdCurrent" type="password" required autocomplete="current-password">
+                        <div class="invalid-feedback">Escribe tu contraseña actual.</div>
+                    </div>
+                    <div class="field">
+                        <label class="form-label" for="pwdNew">Contraseña nueva</label>
+                        <div class="input-group has-validation">
+                            <input class="form-control" id="pwdNew" type="password" required minlength="8" autocomplete="new-password">
+                            <button class="btn btn-outline-secondary" type="button" id="togglePwdNew" aria-label="Mostrar contraseña"><i class="bi bi-eye"></i></button>
+                            <div class="invalid-feedback">Usa al menos 8 caracteres.</div>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="form-label" for="pwdConfirm">Repite la contraseña nueva</label>
+                        <input class="form-control" id="pwdConfirm" type="password" required minlength="8" autocomplete="new-password">
+                        <div class="invalid-feedback">Las contraseñas no coinciden.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="pwdSave">Cambiar contraseña</button>
+                </form>
+            </div>
+            <div class="block">
+                <h3>Sesiones</h3>
+                <p>Si iniciaste sesión en un dispositivo que ya no usas o que no es tuyo, ciérrala desde aquí. Este dispositivo seguirá conectado.</p>
+                <div class="danger-zone mt-0 pt-0 border-0" id="sessionsZone">
+                    <div class="ask"><button type="button" class="btn btn-outline-secondary" data-danger="ask">Cerrar sesión en los demás dispositivos…</button></div>
+                    <div class="confirm">
+                        <span class="small fw-semibold">¿Cerrar todas las demás sesiones?</span>
+                        <button type="button" class="btn btn-primary btn-sm" data-danger="confirm">Sí, cerrarlas</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-danger="cancel">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+            <div class="block">
+                <div class="opt"><span class="t">Verificación en dos pasos <span class="pending-tag">Pendiente</span></span><span class="d">Aún no está disponible. Requiere agregar códigos de una app autenticadora.</span></div>
+                <div class="opt"><span class="t">Lista de sesiones activas <span class="pending-tag">Pendiente</span></span><span class="d">La app no registra dispositivos todavía; por eso solo puedes cerrarlas todas a la vez.</span></div>
+                <div class="opt"><span class="t">Historial de accesos <span class="pending-tag">Pendiente</span></span><span class="d">Los inicios de sesión aún no se guardan.</span></div>
+            </div>
+        </section>
+
+        <!-- PREFERENCIAS -->
+        <section class="pane" id="pane-preferencias" aria-labelledby="prefTitle" hidden>
+            <h2 id="prefTitle">Preferencias</h2>
+            <p class="lead-text">Tema, moneda y cómo se muestran tus datos. <span class="saved" id="prefSaved">Guardado</span></p>
+            <div class="block">
+                <div class="opt">
+                    <span class="t">Tema</span>
+                    <div class="seg" role="group" aria-label="Tema" data-pref="theme">
+                        <button type="button" data-value="auto">Automático</button>
+                        <button type="button" data-value="light">Claro</button>
+                        <button type="button" data-value="dark">Oscuro</button>
+                    </div>
+                    <span class="d">Automático sigue la configuración de tu dispositivo. Se guarda en este dispositivo.</span>
+                </div>
+                <div class="opt">
+                    <span class="t">Formato de fecha</span>
+                    <div class="seg" role="group" aria-label="Formato de fecha" data-pref="dateFormat">
+                        <button type="button" data-value="short">5 nov</button>
+                        <button type="button" data-value="numeric">05/11/2026</button>
+                    </div>
+                    <span class="d">Se guarda en este dispositivo.</span>
+                </div>
+                <div class="opt">
+                    <span class="t">Ocultar saldos</span>
+                    <div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" role="switch" id="hideAmounts" aria-label="Ocultar saldos"></div>
+                    <span class="d">Difumina las cifras para usar la app en público; pasa el cursor o toca para verlas.</span>
+                </div>
+            </div>
+            <div class="block">
+                <div class="opt">
+                    <label class="t" for="currency">Moneda principal</label>
+                    <select class="form-select form-select-sm" id="currency" style="width:auto">
+                        <option value="USD">USD · Dólar</option>
+                        <option value="EUR">EUR · Euro</option>
+                        <option value="COP">COP · Peso colombiano</option>
+                        <option value="PEN">PEN · Sol peruano</option>
+                    </select>
+                    <span class="d">Moneda de tus nuevos movimientos. Se guarda en tu cuenta.</span>
+                </div>
+                <div class="opt">
+                    <span class="t">Idioma</span>
+                    <span class="small fw-semibold">Español</span>
+                    <span class="d">Es el único idioma disponible por ahora. <span class="pending-tag">Otros idiomas pendientes</span></span>
+                </div>
+            </div>
+        </section>
+
+        <!-- NOTIFICACIONES -->
+        <section class="pane" id="pane-notificaciones" aria-labelledby="notTitle" hidden>
+            <h2 id="notTitle">Notificaciones</h2>
+            <p class="lead-text">La app todavía no envía notificaciones fuera de ella. Esto es lo que existe hoy y lo que falta.</p>
+            <div class="block">
+                <div class="opt"><span class="t">Alertas de presupuestos</span><span class="small fw-semibold">Dentro de la app</span><span class="d">Se muestran en Presupuestos cuando una categoría se acerca a su límite o lo supera.</span></div>
+                <div class="opt"><span class="t">Pagos del iPhone por confirmar</span><span class="small fw-semibold">Dentro de la app</span><span class="d">El contador de Pendientes avisa cuando llega un pago nuevo.</span></div>
+                <div class="opt"><span class="t">Alertas de ingresos y gastos <span class="pending-tag">Pendiente</span></span><span class="d">Requiere notificaciones push o correo.</span></div>
+                <div class="opt"><span class="t">Confirmaciones de transferencias <span class="pending-tag">Pendiente</span></span><span class="d">Requiere notificaciones push o correo.</span></div>
+                <div class="opt"><span class="t">Resúmenes financieros por correo <span class="pending-tag">Pendiente</span></span><span class="d">Requiere configurar el envío de correos (SMTP) y una tarea programada.</span></div>
+            </div>
+        </section>
+
+        <!-- PRIVACIDAD Y DATOS -->
+        <section class="pane" id="pane-datos" aria-labelledby="dataTitle" hidden>
+            <h2 id="dataTitle">Privacidad y datos</h2>
+            <p class="lead-text">Tus datos son tuyos: consúltalos, descárgalos o elimínalos.</p>
+            <div class="block">
+                <h3>Exportar movimientos</h3>
+                <p>Archivo CSV que se abre en Excel o Numbers.</p>
+                <div class="row g-2 align-items-end">
+                    <div class="col-6 col-md-4"><label class="form-label" for="expFrom">Desde</label><input type="date" class="form-control form-control-sm" id="expFrom"></div>
+                    <div class="col-6 col-md-4"><label class="form-label" for="expTo">Hasta</label><input type="date" class="form-control form-control-sm" id="expTo"></div>
+                    <div class="col-12 col-md-4"><button type="button" class="btn btn-outline-secondary btn-sm w-100" id="expCsv"><i class="bi bi-download me-1" aria-hidden="true"></i>Descargar CSV</button></div>
+                </div>
+            </div>
+            <div class="block">
+                <h3>Descargar todos mis datos</h3>
+                <p>Perfil, cuentas, tarjetas, categorías, movimientos y presupuestos en un archivo JSON.</p>
+                <button type="button" class="btn btn-outline-secondary" id="expJson"><i class="bi bi-download me-1" aria-hidden="true"></i>Descargar mis datos</button>
+            </div>
+            <div class="block">
+                <h3>Información personal guardada</h3>
+                <dl class="kv" id="personalData"></dl>
+                <p class="mt-3 mb-0 small"><a href="/terms" target="_blank" rel="noopener">Términos y privacidad</a></p>
+            </div>
+            <div class="block">
+                <h3>Eliminar mi cuenta</h3>
+                <p>Se borran para siempre tu perfil, cuentas, tarjetas, movimientos, categorías, presupuestos y pagos pendientes. No se puede deshacer; descarga tus datos antes si los quieres conservar.</p>
+                <div class="danger-zone mt-0 pt-0 border-0" id="deleteZone">
+                    <div class="ask"><button type="button" class="btn btn-outline-danger" data-danger="ask">Eliminar mi cuenta…</button></div>
+                    <div class="confirm confirm-stack">
+                        <label class="form-label" for="deletePwd">Escribe tu contraseña para confirmar</label>
+                        <input type="password" class="form-control mb-2" id="deletePwd" autocomplete="current-password" style="max-width:320px">
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-danger btn-sm" data-danger="confirm">Eliminar definitivamente</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-danger="cancel">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let me = null;
+
+// ------------------------------------------------------------ Navegación interna (#seccion)
+function showPane() {
+    const key = (location.hash || '#info').slice(1);
+    const valid = document.getElementById(`pane-${key}`) ? key : 'info';
+    document.querySelectorAll('.pane').forEach(p => { p.hidden = p.id !== `pane-${valid}`; });
+    document.querySelectorAll('.settings-nav a').forEach(a => {
+        const on = a.dataset.pane === valid;
+        a.classList.toggle('is-active', on);
+        if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+}
+window.addEventListener('hashchange', showPane);
+
+function flash(id) {
+    const el = document.getElementById(id);
+    el.classList.add('is-on');
+    setTimeout(() => el.classList.remove('is-on'), 1600);
+}
+
+// ------------------------------------------------------------ Mi información
+function initials(name) {
+    return (name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+}
+
+function renderMe() {
+    const since = new Date(me.created_at);
+    document.getElementById('avatar').textContent = initials(me.full_name);
+    document.getElementById('infoEmail').textContent = me.email;
+    const sinceLabel = `${since.getDate()} ${MONTHS_SHORT[since.getMonth()]} ${since.getFullYear()}`;
+    document.getElementById('infoSince').textContent = `Cuenta creada el ${sinceLabel}`;
+    document.getElementById('infoName').value = me.full_name;
+    document.getElementById('infoPhone').value = me.phone || '';
+    document.getElementById('infoEmailField').value = me.email;
+    document.getElementById('currency').value = me.currency_preference;
+    document.getElementById('personalData').innerHTML = [
+        ['Nombre', me.full_name], ['Correo', me.email], ['Teléfono', me.phone || 'Sin registrar'],
+        ['Moneda', me.currency_preference], ['Cuenta creada', sinceLabel],
+    ].map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('');
+}
+
+async function loadMe() {
+    const res = await authFetch('/api/v1/auth/me');
+    if (!res.ok) return;
+    me = await res.json();
+    saveUser(me);
+    renderMe();
+}
+
+document.getElementById('infoForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!validateFields(e.target)) return;
+    const btn = document.getElementById('infoSave');
+    setLoading(btn, true);
+    try {
+        const res = await authFetch('/api/v1/auth/me', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ full_name: document.getElementById('infoName').value.trim(), phone: document.getElementById('infoPhone').value.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(apiError(data, 'No se pudo guardar.'));
+        me = data; saveUser(me); renderMe(); flash('infoSaved');
+        e.target.querySelectorAll('.is-valid').forEach(el => el.classList.remove('is-valid'));
+    } catch (err) {
+        showAlert('danger', err.message);
+    } finally {
+        setLoading(btn, false);
+    }
+});
+
+// ------------------------------------------------------------ Seguridad
+bindPasswordToggle('togglePwdNew', 'pwdNew');
+document.getElementById('pwdForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const confirmEl = document.getElementById('pwdConfirm');
+    confirmEl.setCustomValidity(confirmEl.value !== document.getElementById('pwdNew').value ? 'no coincide' : '');
+    if (!validateFields(f)) return;
+    const btn = document.getElementById('pwdSave');
+    setLoading(btn, true, 'Cambiando…');
+    try {
+        const res = await authFetch('/api/v1/auth/change-password', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ current_password: document.getElementById('pwdCurrent').value, new_password: document.getElementById('pwdNew').value }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            document.getElementById('pwdCurrent').classList.add('is-invalid');
+            throw new Error(apiError(data, 'No se pudo cambiar la contraseña.'));
+        }
+        replaceToken(data.access_token);
+        f.reset();
+        f.querySelectorAll('.is-valid, .is-invalid').forEach(el => el.classList.remove('is-valid', 'is-invalid'));
+        showAlert('success', 'Contraseña cambiada. Se cerraron tus otras sesiones.');
+    } catch (err) {
+        showAlert('danger', err.message);
+    } finally {
+        setLoading(btn, false);
+    }
+});
+
+setupDangerZone(document.getElementById('sessionsZone'), async () => {
+    const res = await authFetch('/api/v1/auth/logout-all', { method: 'POST' });
+    if (!res.ok) { showAlert('danger', 'No se pudieron cerrar las sesiones.'); return; }
+    replaceToken((await res.json()).access_token);
+    showAlert('success', 'Listo. Las demás sesiones se cerraron.');
+});
+
+// ------------------------------------------------------------ Preferencias (dispositivo)
+function setPref(key, value) {
+    const prefs = getPrefs();
+    prefs[key] = value;
+    localStorage.setItem('financial_prefs', JSON.stringify(prefs));
+    applyPreferences();
+    paintPrefs();
+    flash('prefSaved');
+}
+function paintPrefs() {
+    const prefs = { theme: 'auto', dateFormat: 'short', ...getPrefs() };
+    document.querySelectorAll('[data-pref]').forEach(group => {
+        group.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.value === prefs[group.dataset.pref])));
+    });
+    document.getElementById('hideAmounts').checked = Boolean(prefs.hideAmounts);
+}
+document.querySelectorAll('[data-pref] button').forEach(b => b.addEventListener('click', () => setPref(b.closest('[data-pref]').dataset.pref, b.dataset.value)));
+document.getElementById('hideAmounts').addEventListener('change', (e) => setPref('hideAmounts', e.target.checked));
+
+document.getElementById('currency').addEventListener('change', async (e) => {
+    const res = await authFetch('/api/v1/auth/me', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currency_preference: e.target.value }),
+    });
+    if (res.ok) { me = await res.json(); saveUser(me); flash('prefSaved'); }
+    else { showAlert('danger', 'No se pudo cambiar la moneda.'); e.target.value = me.currency_preference; }
+});
+
+// ------------------------------------------------------------ Privacidad y datos
+async function download(url, filename) {
+    const res = await authFetch(url);
+    if (!res.ok) throw new Error('No se pudo generar el archivo.');
+    const href = URL.createObjectURL(await res.blob());
+    const a = Object.assign(document.createElement('a'), { href, download: filename });
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(href);
+}
+document.getElementById('expCsv').addEventListener('click', async (e) => {
+    const params = new URLSearchParams();
+    const from = document.getElementById('expFrom').value, to = document.getElementById('expTo').value;
+    if (from) params.set('start_date', from);
+    if (to) params.set('end_date', to);
+    setLoading(e.currentTarget, true, 'Generando…');
+    try { await download(`/api/v1/budgets/export/csv?${params}`, 'movimientos.csv'); showAlert('success', 'Archivo descargado.'); }
+    catch (err) { showAlert('danger', err.message); }
+    finally { setLoading(e.currentTarget, false); }
+});
+document.getElementById('expJson').addEventListener('click', async (e) => {
+    setLoading(e.currentTarget, true, 'Generando…');
+    try { await download('/api/v1/auth/me/export', 'mis-datos-financialapp.json'); showAlert('success', 'Archivo descargado.'); }
+    catch (err) { showAlert('danger', err.message); }
+    finally { setLoading(e.currentTarget, false); }
+});
+
+setupDangerZone(document.getElementById('deleteZone'), async () => {
+    const pwdEl = document.getElementById('deletePwd');
+    const zone = document.getElementById('deleteZone');
+    const keepOpen = () => setTimeout(() => { zone.classList.add('is-confirming'); pwdEl.focus(); }, 0);
+    if (!pwdEl.value) { pwdEl.classList.add('is-invalid'); keepOpen(); return; }
+    const res = await authFetch('/api/v1/auth/me', {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pwdEl.value }),
+    });
+    if (res.status === 204) { clearSession(); window.location.href = '/login'; return; }
+    const message = apiError(await res.json().catch(() => null), 'No se pudo eliminar la cuenta.');
+    pwdEl.classList.add('is-invalid');
+    keepOpen();
+    showAlert('danger', message);
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    showPane();
+    paintPrefs();
+    loadMe();
+});
+</script>
+{% endblock %}

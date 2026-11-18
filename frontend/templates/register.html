@@ -1,95 +1,113 @@
-{% extends "base.html" %}
+{% extends "auth_base.html" %}
 
 {% block title %}Crear cuenta · FinancialApp{% endblock %}
-{% block body_class %}auth{% endblock %}
 
-{% block body %}
-<main class="auth-main">
-    <p class="auth-brand">FinancialApp</p>
-    <form class="auth-panel" id="registerForm">
-        <h1>Crear cuenta</h1>
-        <div id="alertBox" class="alert d-none" role="alert"></div>
+{% block auth %}
+<h1 class="auth-title">Crear cuenta</h1>
+<p class="auth-lead">Una cuenta por persona. Tus datos no se comparten con nadie.</p>
 
-        <div class="row g-2 mb-3">
-            <div class="col-sm-6">
-                <label for="firstName" class="form-label">Nombre</label>
-                <input type="text" class="form-control" id="firstName" required minlength="2" maxlength="50" autocomplete="given-name">
-            </div>
-            <div class="col-sm-6">
-                <label for="lastName" class="form-label">Apellido</label>
-                <input type="text" class="form-control" id="lastName" required minlength="2" maxlength="50" autocomplete="family-name">
-            </div>
+<div id="alertBox" class="alert d-none" role="alert"></div>
+
+<form id="registerForm" novalidate>
+    <div class="field-row">
+        <div class="field">
+            <label for="firstName" class="form-label">Nombre</label>
+            <input type="text" class="form-control" id="firstName" required minlength="2" maxlength="50" autocomplete="given-name" autofocus>
+            <div class="invalid-feedback">Escribe tu nombre.</div>
         </div>
-        <div class="mb-3">
-            <label for="email" class="form-label">Correo</label>
-            <input type="email" class="form-control" id="email" required autocomplete="email" inputmode="email">
+        <div class="field">
+            <label for="lastName" class="form-label">Apellido</label>
+            <input type="text" class="form-control" id="lastName" required minlength="2" maxlength="49" autocomplete="family-name">
+            <div class="invalid-feedback">Escribe tu apellido.</div>
         </div>
-        <div class="mb-3">
-            <label for="currency" class="form-label">Moneda</label>
-            <select class="form-select" id="currency">
-                <option value="USD" selected>USD · Dólar</option>
-                <option value="EUR">EUR · Euro</option>
-                <option value="COP">COP · Peso colombiano</option>
-                <option value="PEN">PEN · Sol peruano</option>
-            </select>
+    </div>
+    <div class="field">
+        <label for="email" class="form-label">Correo</label>
+        <input type="email" class="form-control" id="email" required autocomplete="email" inputmode="email">
+        <div class="invalid-feedback">Escribe un correo válido.</div>
+    </div>
+    <div class="field">
+        <label for="phone" class="form-label">Celular</label>
+        <input type="tel" class="form-control" id="phone" required maxlength="30" autocomplete="tel" inputmode="tel" placeholder="099 123 4567" pattern="[0-9\s+\(\)\-]*">
+        <div class="invalid-feedback">Escribe tu número de celular (9 a 15 dígitos).</div>
+    </div>
+    <div class="field">
+        <label for="password" class="form-label">Contraseña</label>
+        <div class="input-group has-validation">
+            <input type="password" class="form-control" id="password" required minlength="8" autocomplete="new-password" aria-describedby="pwdHelp">
+            <button class="btn btn-outline-secondary" type="button" id="togglePassword" aria-label="Mostrar contraseña"><i class="bi bi-eye"></i></button>
+            <div class="invalid-feedback">Usa al menos 8 caracteres.</div>
         </div>
-        <div class="mb-3">
-            <label for="password" class="form-label">Contraseña <span class="text-muted fw-normal">(mínimo 8 caracteres)</span></label>
-            <div class="input-group">
-                <input type="password" class="form-control" id="password" required minlength="8" autocomplete="new-password">
-                <button class="btn btn-outline-secondary" type="button" id="togglePassword" aria-label="Mostrar contraseña"><i class="bi bi-eye"></i></button>
-            </div>
-        </div>
-        <div class="mb-4">
-            <label for="confirmPassword" class="form-label">Repite la contraseña</label>
-            <input type="password" class="form-control" id="confirmPassword" required minlength="8" autocomplete="new-password">
-        </div>
-        <button type="submit" id="submitBtn" class="btn btn-primary w-100">Crear cuenta</button>
-        <p class="auth-alt">¿Ya tienes cuenta? <a href="/login">Iniciar sesión</a></p>
-    </form>
-</main>
+        <div class="pwd-meter" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="form-text" id="pwdHelp">Mínimo 8 caracteres. Mejor si mezclas letras, números y símbolos.</div>
+    </div>
+    <div class="field">
+        <label for="confirmPassword" class="form-label">Repite la contraseña</label>
+        <input type="password" class="form-control" id="confirmPassword" required minlength="8" autocomplete="new-password">
+        <div class="invalid-feedback">Las contraseñas no coinciden.</div>
+    </div>
+    <div class="form-check mb-4">
+        <input class="form-check-input" type="checkbox" id="terms" required>
+        <label class="form-check-label" for="terms">Acepto los <a href="/terms" target="_blank" rel="noopener">términos y la política de privacidad</a></label>
+        <div class="invalid-feedback">Debes aceptar los términos para continuar.</div>
+    </div>
+    <button type="submit" id="submitBtn" class="btn btn-primary w-100 btn-lg-auth"><span class="label">Crear cuenta</span></button>
+</form>
+
+<p class="auth-alt">¿Ya tienes cuenta? <a href="/login">Iniciar sesión</a></p>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
 bindPasswordToggle('togglePassword', 'password');
+const form = document.getElementById('registerForm');
+const pwd = form.password, confirmPwd = form.confirmPassword;
 
-document.getElementById('registerForm').addEventListener('submit', async (e) => {
+// Indicador de fortaleza (orientativo, no bloquea)
+pwd.addEventListener('input', () => {
+    const v = pwd.value;
+    const score = [v.length >= 8, /[A-Za-z]/.test(v) && /\d/.test(v), /[^A-Za-z0-9]/.test(v) || v.length >= 14].filter(Boolean).length;
+    document.querySelector('.pwd-meter').dataset.score = v ? score : 0;
+});
+const phone = form.phone;
+function checkPhone() {
+    const digits = phone.value.replace(/\D/g, '').length;
+    phone.setCustomValidity(phone.value && (digits < 9 || digits > 15) ? 'celular' : '');
+}
+phone.addEventListener('input', checkPhone);
+confirmPwd.addEventListener('input', () => {
+    confirmPwd.setCustomValidity(confirmPwd.value && confirmPwd.value !== pwd.value ? 'no coincide' : '');
+});
+
+form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const alertBox = document.getElementById('alertBox');
-    const btn = document.getElementById('submitBtn');
-    const password = document.getElementById('password').value;
-
-    if (password !== document.getElementById('confirmPassword').value) {
-        alertBox.className = 'alert alert-danger';
-        alertBox.textContent = 'Las contraseñas no coinciden.';
-        return;
-    }
-
     alertBox.className = 'alert d-none';
-    btn.disabled = true;
-    btn.textContent = 'Creando…';
+    confirmPwd.setCustomValidity(confirmPwd.value !== pwd.value ? 'no coincide' : '');
+    checkPhone();
+    if (!validateFields(form)) return;
+    const btn = document.getElementById('submitBtn');
+    setLoading(btn, true, 'Creando cuenta…');
     try {
         const res = await fetch('/api/v1/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                full_name: `${document.getElementById('firstName').value.trim()} ${document.getElementById('lastName').value.trim()}`,
-                email: document.getElementById('email').value.trim(),
-                currency_preference: document.getElementById('currency').value,
-                password,
+                full_name: `${form.firstName.value} ${form.lastName.value}`.trim().replace(/\s+/g, ' '),
+                email: form.email.value.trim(),
+                phone: phone.value.trim(),
+                currency_preference: 'USD',
+                password: pwd.value,
             }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(apiError(data, 'No se pudo crear la cuenta.'));
-        localStorage.setItem('financial_token', data.token.access_token);
-        localStorage.setItem('financial_user', JSON.stringify(data.user));
+        saveSession(data.token.access_token, data.user, true);
         window.location.href = '/dashboard';
     } catch (err) {
         alertBox.className = 'alert alert-danger';
         alertBox.textContent = err.message;
-        btn.disabled = false;
-        btn.textContent = 'Crear cuenta';
+        setLoading(btn, false);
     }
 });
 </script>

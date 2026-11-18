@@ -8,14 +8,40 @@
 .tx-filters .wide { grid-column: 1 / -1; }
 .tx-filters .form-label { margin-bottom: 4px; }
 @media (min-width: 992px) { .tx-filters { grid-template-columns: 1fr 1fr 160px 160px auto; } .tx-filters .wide { grid-column: auto; } }
-@media (max-width: 991.98px) { .tx-new { display: none; } }
-.tx-list tbody tr { cursor: pointer; }
-.tx-list td { padding-top: 12px; padding-bottom: 12px; }
-.tx-list .col-wide { display: none; }
-@media (min-width: 992px) { .tx-list .col-wide { display: table-cell; } .tx-list .col-narrow { display: none; } }
+@media (max-width: 991.98px) {
+    .tx-new { display: none; }
+    .tx-adv { display: none; }
+    .tx-filters.is-open .tx-adv { display: block; }
+    .tx-search { grid-column: 1; }
+}
+.tx-toggle { align-self: end; }
+@media (min-width: 992px) { .tx-toggle { display: none; } }
+.tx-day { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; padding: 18px 4px 8px; background: var(--ground); border-bottom: 1px solid var(--rule-strong); font-size: 0.8125rem; font-weight: 700; }
+@media (max-width: 991.98px) { .tx-day { top: calc(var(--topbar-h) + env(safe-area-inset-top)); } }
+.tx-day span:last-child { color: var(--ink-muted); font-weight: 600; }
+.tx-row { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 2px 14px; align-items: start; padding: 14px 4px; border-bottom: 1px solid var(--rule); cursor: pointer; transition: background-color .15s ease; }
+.tx-time { font-size: 0.75rem; color: var(--ink-faint); padding-top: 3px; }
+.tx-row:hover, .tx-row:focus-visible { background: var(--surface-2); }
+.tx-who { font-weight: 600; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tx-who span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx-meta { grid-column: 2; font-size: 0.8125rem; color: var(--ink-muted); }
+.tx-amt { font-weight: 700; text-align: right; white-space: nowrap; font-size: 1rem; }
+.tx-state { grid-column: 3; text-align: right; }
+.pending-note { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 8px; border-radius: var(--radius); background: var(--surface-2); color: var(--ink); font-weight: 600; text-decoration: none; }
+.pending-note[hidden] { display: none; }
 .tx-detail { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0; font-size: 0.9375rem; }
 .tx-detail dt { color: var(--ink-muted); font-weight: 600; font-size: 0.8125rem; }
 .tx-detail dd { margin: 0; overflow-wrap: anywhere; }
+.tx-search { position: relative; grid-column: 1 / -1; }
+.tx-search .bi { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-muted); pointer-events: none; }
+.tx-search input { padding-left: 34px; }
+@media (min-width: 992px) { .tx-filters { grid-template-columns: minmax(200px, 1.4fr) 1fr 1fr 150px 150px auto; } .tx-search { grid-column: auto; } }
+.load-more { display: flex; justify-content: center; padding: 14px; border-top: 1px solid var(--rule); }
+.load-more[hidden] { display: none; }
+.tx-type { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 16px; }
+@media (max-width: 575.98px) { .tx-type { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tx-type .btn { width: 100%; }
+#txAmount { font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; min-height: 64px; }
 </style>
 {% endblock %}
 
@@ -28,7 +54,7 @@
     </div>
     <div class="page-actions">
         <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#categoriesModal" onclick="loadCategoriesList()">Categorías</button>
-        <button class="btn btn-primary tx-new" data-bs-toggle="modal" data-bs-target="#createTxModal" onclick="prepareCreateModal()">
+        <button class="btn btn-primary tx-new" onclick="prepareCreateModal()">
             <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Nuevo movimiento
         </button>
     </div>
@@ -43,7 +69,15 @@
 </dl>
 
 <div class="tx-filters">
-    <div class="wide">
+    <div class="tx-search">
+        <label class="form-label" for="filterSearch">Buscar</label>
+        <div class="position-relative">
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <input type="search" class="form-control form-control-sm" id="filterSearch" placeholder="Descripción o nota" autocomplete="off" enterkeyhint="search">
+        </div>
+    </div>
+    <button type="button" class="btn btn-outline-secondary btn-sm tx-toggle" id="filtersToggle" aria-expanded="false"><i class="bi bi-sliders me-1" aria-hidden="true"></i>Filtros</button>
+    <div class="wide tx-adv">
     <label class="form-label" for="filterTxType">Tipo</label>
     <select class="form-select form-select-sm" id="filterTxType" onchange="loadTransactions()">
         <option value="">Todos los tipos</option>
@@ -53,35 +87,29 @@
         <option value="card_payment">Pagos de tarjeta</option>
     </select>
     </div>
-    <div class="wide">
+    <div class="wide tx-adv">
     <label class="form-label" for="filterCategory">Categoría</label>
     <select class="form-select form-select-sm" id="filterCategory" onchange="loadTransactions()">
         <option value="">Todas</option>
     </select>
     </div>
-    <div>
+    <div class="tx-adv">
     <label class="form-label" for="filterStartDate">Desde</label>
     <input type="date" class="form-control form-control-sm" id="filterStartDate" onchange="loadTransactions()">
     </div>
-    <div>
+    <div class="tx-adv">
     <label class="form-label" for="filterEndDate">Hasta</label>
     <input type="date" class="form-control form-control-sm" id="filterEndDate" onchange="loadTransactions()">
     </div>
-    <button class="btn btn-outline-secondary btn-sm wide" onclick="clearFilters()">Limpiar filtros</button>
+    <button class="btn btn-outline-secondary btn-sm wide tx-adv" onclick="clearFilters()">Limpiar filtros</button>
 </div>
 
-<div class="rows">
-    <table class="table table-hover tx-list mb-0">
-        <thead>
-            <tr>
-                <th class="ps-3">Detalle</th>
-                <th class="col-wide">Fecha</th>
-                <th class="col-wide">Cuenta o tarjeta</th>
-                <th class="text-end pe-3">Monto</th>
-            </tr>
-        </thead>
-        <tbody id="transactionsTableBody"><tr><td colspan="4" class="empty">Cargando…</td></tr></tbody>
-    </table>
+<a class="pending-note" href="/pending" id="pendingNote" hidden></a>
+<div>
+    <div id="transactionsTableBody"><span class="skeleton"></span><span class="skeleton"></span><span class="skeleton"></span></div>
+    <div class="load-more" id="loadMore" hidden>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="loadMoreBtn">Cargar más</button>
+    </div>
 </div>
 
 <!-- Detalle de un movimiento (incluye eliminar) -->
@@ -96,6 +124,7 @@
                 <div id="txDetailAlert" class="alert d-none" role="alert"></div>
                 <p class="figure mb-3" id="txDetailAmount" style="font-size: 2.25rem"></p>
                 <dl class="tx-detail" id="txDetailList"></dl>
+                <button type="button" class="btn btn-primary w-100 mt-3" id="txEditBtn"><i class="bi bi-pencil me-1" aria-hidden="true"></i>Editar</button>
                 <div class="danger-zone" id="txDangerZone">
                     <div class="ask">
                         <p>Al eliminarlo, los saldos de la cuenta o tarjeta vuelven a como estaban.</p>
@@ -112,68 +141,51 @@
     </div>
 </div>
 
-<!-- MODAL: REGISTRAR MOVIMIENTO -->
-<div class="modal fade" id="createTxModal" tabindex="-1" aria-hidden="true">
+<!-- Crear o editar movimiento -->
+<div class="modal fade" id="createTxModal" tabindex="-1" aria-labelledby="txFormTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 rounded-4 shadow">
-            <div class="modal-header border-0 pb-0">
-                <h2 class="modal-title">Nuevo movimiento</h2>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <form class="modal-content" id="createTxForm" novalidate>
+            <div class="modal-header">
+                <h2 class="modal-title" id="txFormTitle">Nuevo movimiento</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
-            <form id="createTxForm">
-                <div class="modal-body pt-3">
-                    <div id="createTxAlert" class="alert d-none" role="alert"></div>
-
-                    <!-- Selector de Tipo de Movimiento -->
-                    <div class="btn-group w-100 mb-3" role="group">
-                        <input type="radio" class="btn-check" name="txTypeRadio" id="typeExpense" value="expense" checked onchange="updateModalFormLayout()">
-                        <label class="btn btn-outline-danger fw-semibold" for="typeExpense"><i class="bi bi-dash-circle me-1"></i> Gasto</label>
-
-                        <input type="radio" class="btn-check" name="txTypeRadio" id="typeIncome" value="income" onchange="updateModalFormLayout()">
-                        <label class="btn btn-outline-success fw-semibold" for="typeIncome"><i class="bi bi-plus-circle me-1"></i> Ingreso</label>
-
-                        <input type="radio" class="btn-check" name="txTypeRadio" id="typeTransfer" value="transfer" onchange="updateModalFormLayout()">
-                        <label class="btn btn-outline-primary fw-semibold" for="typeTransfer"><i class="bi bi-arrow-left-right me-1"></i> Transferencia</label>
-
-                        <input type="radio" class="btn-check" name="txTypeRadio" id="typeCardPay" value="card_payment" onchange="updateModalFormLayout()">
-                        <label class="btn btn-outline-warning fw-semibold text-dark" for="typeCardPay"><i class="bi bi-credit-card me-1"></i> Pago Tarjeta</label>
+            <div class="modal-body">
+                <div id="createTxAlert" class="alert d-none" role="alert"></div>
+                <div class="tx-type" role="radiogroup" aria-label="Tipo de movimiento">
+                    <input type="radio" class="btn-check" name="txTypeRadio" id="typeExpense" value="expense" checked>
+                    <label class="btn btn-outline-secondary" for="typeExpense">Gasto</label>
+                    <input type="radio" class="btn-check" name="txTypeRadio" id="typeIncome" value="income">
+                    <label class="btn btn-outline-secondary" for="typeIncome">Ingreso</label>
+                    <input type="radio" class="btn-check" name="txTypeRadio" id="typeTransfer" value="transfer">
+                    <label class="btn btn-outline-secondary" for="typeTransfer">Transferencia</label>
+                    <input type="radio" class="btn-check" name="txTypeRadio" id="typeCardPay" value="card_payment">
+                    <label class="btn btn-outline-secondary" for="typeCardPay">Pago de tarjeta</label>
+                </div>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <label class="form-label" for="txAmount">Monto (USD)</label>
+                        <input type="text" class="form-control num" id="txAmount" inputmode="decimal" autocomplete="off" placeholder="0,00" required>
                     </div>
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Monto (USD) *</label>
-                            <input type="number" step="0.01" min="0.01" inputmode="decimal" class="form-control form-control-lg fw-bold" id="txAmount" placeholder="0.00" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Fecha *</label>
-                            <input type="date" class="form-control form-control-lg" id="txDate" required>
-                        </div>
+                    <div class="col-6">
+                        <label class="form-label" for="txDate">Fecha</label>
+                        <input type="date" class="form-control" id="txDate" required>
                     </div>
-
-                    <div class="mb-3">
-                        <label class="form-label small fw-semibold">Descripción *</label>
-                        <input type="text" class="form-control" id="txDescription" placeholder="Ej: Supermercado Supermaxi, Pago de sueldo, Almuerzo" required>
+                    <div class="col-12">
+                        <label class="form-label" for="txDescription">Descripción</label>
+                        <input type="text" class="form-control" id="txDescription" maxlength="255" placeholder="Ej: Supermaxi, sueldo, almuerzo" required>
                     </div>
-
-                    <!-- Campos dinámicos según el tipo -->
-                    <div id="dynamicFieldsContainer" class="p-3 bg-light rounded-3 mb-3 border">
-                        <!-- Se llena dinámicamente con JS -->
-                    </div>
-
-                    <div class="mb-2">
-                        <label class="form-label small fw-semibold">Notas / Observaciones (Opcional)</label>
-                        <textarea class="form-control" id="txNotes" rows="2" placeholder="Factura #123, transferido desde app móvil, etc."></textarea>
+                    <div class="col-12" id="dynamicFieldsContainer"></div>
+                    <div class="col-12">
+                        <label class="form-label" for="txNotes">Notas <span class="text-muted fw-normal">(opcional)</span></label>
+                        <textarea class="form-control" id="txNotes" rows="2" maxlength="1000"></textarea>
                     </div>
                 </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary rounded-3 px-4 fw-semibold" id="createTxSubmitBtn">
-                        <span id="createTxSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
-                        Guardar Movimiento
-                    </button>
-                </div>
-            </form>
-        </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary" id="createTxSubmitBtn">Guardar</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -272,37 +284,45 @@ async function loadBaseData() {
 
 function populateCategoryFilter() {
     const sel = document.getElementById('filterCategory');
-    sel.innerHTML = '<option value="">Todas las categorías</option>';
+    sel.innerHTML = '<option value="">Todas</option>';
     allCategories.forEach(c => {
-        sel.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+        sel.innerHTML += `<option value="${c.id}">${esc(c.name)}</option>`;
     });
 }
 
 // Cargar Transacciones y Resumen
-async function loadTransactions() {
-    const txType = document.getElementById('filterTxType').value;
-    const catId = document.getElementById('filterCategory').value;
+const PAGE_SIZE = 50;
+let pageOffset = 0;
+
+function txQuery(offset) {
+    const params = new URLSearchParams({ limit: PAGE_SIZE, offset });
+    const map = { transaction_type: 'filterTxType', category_id: 'filterCategory', start_date: 'filterStartDate', end_date: 'filterEndDate', q: 'filterSearch' };
+    Object.entries(map).forEach(([key, id]) => {
+        const v = document.getElementById(id).value.trim();
+        if (v) params.set(key, v);
+    });
+    return `/api/v1/transactions?${params}`;
+}
+
+async function loadTransactions({ append = false } = {}) {
+    pageOffset = append ? pageOffset + PAGE_SIZE : 0;
     const sDate = document.getElementById('filterStartDate').value;
     const eDate = document.getElementById('filterEndDate').value;
-
-    let url = '/api/v1/transactions?limit=100';
-    if (txType) url += `&transaction_type=${txType}`;
-    if (catId) url += `&category_id=${catId}`;
-    if (sDate) url += `&start_date=${sDate}`;
-    if (eDate) url += `&end_date=${eDate}`;
-
     try {
-        const [listRes, summaryRes] = await Promise.all([
-            authFetch(url),
-            authFetch(`/api/v1/transactions/summary${sDate || eDate ? `?start_date=${sDate}&end_date=${eDate}` : ''}`)
-        ]);
-
-        if (listRes.ok) {
-            allTransactions = await listRes.json();
-            renderTransactionsTable(allTransactions);
+        const requests = [authFetch(txQuery(pageOffset))];
+        if (!append) {
+            const range = new URLSearchParams();
+            if (sDate) range.set('start_date', sDate);
+            if (eDate) range.set('end_date', eDate);
+            requests.push(authFetch(`/api/v1/transactions/summary?${range}`));
         }
+        const [listRes, summaryRes] = await Promise.all(requests);
+        const page = listRes.ok ? await listRes.json() : [];
+        allTransactions = append ? allTransactions.concat(page) : page;
+        renderTransactionsTable(allTransactions);
+        document.getElementById('loadMore').hidden = page.length < PAGE_SIZE;
 
-        if (summaryRes.ok) {
+        if (summaryRes && summaryRes.ok) {
             const sum = await summaryRes.json();
             document.getElementById('sumIncome').textContent = money(sum.total_income, { sign: true });
             document.getElementById('sumExpense').textContent = money(-Number(sum.total_expense), { sign: true });
@@ -312,24 +332,37 @@ async function loadTransactions() {
             netEl.className = net < 0 ? 'amount-out' : '';
         }
     } catch (err) {
-        document.getElementById('transactionsTableBody').innerHTML = `
-            <tr><td colspan="4" class="empty">${esc(err.message)}</td></tr>`;
+        document.getElementById('transactionsTableBody').innerHTML = `<div class="empty">${esc(err.message)}</div>`;
     }
 }
+
+document.getElementById('filtersToggle').addEventListener('click', (e) => {
+    const box = e.currentTarget.closest('.tx-filters');
+    const open = box.classList.toggle('is-open');
+    e.currentTarget.setAttribute('aria-expanded', open);
+});
+
+let searchTimer;
+document.getElementById('filterSearch').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => loadTransactions(), 300);
+});
+document.getElementById('loadMoreBtn').addEventListener('click', () => loadTransactions({ append: true }));
 
 function clearFilters() {
     document.getElementById('filterTxType').value = '';
     document.getElementById('filterCategory').value = '';
     document.getElementById('filterStartDate').value = '';
     document.getElementById('filterEndDate').value = '';
+    document.getElementById('filterSearch').value = '';
     loadTransactions();
 }
 
 const TX_KINDS = {
     income: { label: 'Ingreso', cls: 'amount-in', sign: 1 },
     expense: { label: 'Gasto', cls: 'amount-out', sign: -1 },
-    transfer: { label: 'Transferencia', cls: '', sign: 0 },
-    card_payment: { label: 'Pago de tarjeta', cls: '', sign: 0 },
+    transfer: { label: 'Transferencia', cls: 'amount-move', sign: 0 },
+    card_payment: { label: 'Pago de tarjeta', cls: 'amount-move', sign: 0 },
 };
 
 function txAccount(t) {
@@ -343,30 +376,61 @@ function txAmount(t) {
     return k.sign ? money(Number(t.amount) * k.sign, { sign: true }) : money(t.amount);
 }
 
+const METHOD = { cash: 'Efectivo', bank_transfer: 'Transferencia', debit_card: 'Débito', credit_card: 'Crédito', other: 'Otro' };
+const inkOf = { acc: {}, card: {} };
+
+function txTag(t) {
+    const acc = t.source_account_id ? inkOf.acc[t.source_account_id] : null;
+    const card = t.card_id ? inkOf.card[t.card_id] : null;
+    const first = card || acc || 'var(--ink-faint)';
+    const second = t.destination_account_id ? inkOf.acc[t.destination_account_id] : (card ? 'var(--ink)' : null);
+    return `<span class="tag" style="--band:${esc(first)};${second ? `--band-2:${esc(second)}` : ''}" aria-hidden="true"><i></i>${second ? '<i></i>' : ''}</span>`;
+}
+
+function txState(t) {
+    return (t.notes || '').startsWith('Registrado automáticamente desde el iPhone') ? 'Automático · iPhone' : 'Registrado';
+}
+
 function renderTransactionsTable(transactions) {
-    const tbody = document.getElementById('transactionsTableBody');
+    const box = document.getElementById('transactionsTableBody');
     if (!transactions || !transactions.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty"><i class="bi bi-inbox" aria-hidden="true"></i>No hay movimientos con estos filtros.</td></tr>';
+        const searching = document.getElementById('filterSearch').value.trim();
+        box.innerHTML = `<div class="empty"><i class="bi bi-search" aria-hidden="true"></i><strong>${searching ? 'Nada coincide con la búsqueda' : 'No hay movimientos'}</strong>${searching ? 'Prueba con otra palabra o quita filtros.' : 'Registra uno con el botón Registrar.'}</div>`;
         return;
     }
-    tbody.innerHTML = transactions.map(t => {
-        const k = TX_KINDS[t.transaction_type] || TX_KINDS.expense;
-        return `
-        <tr data-tx="${t.id}" tabindex="0" role="button" aria-label="Ver ${esc(t.description)}">
-            <td class="ps-3">
-                <div class="d-flex align-items-start gap-2">
-                    <span class="ink-dot mt-1" style="background:${esc(t.category_color || '#7D8892')}"></span>
-                    <div class="min-w-0">
-                        <div class="fw-semibold text-break">${esc(t.description)}</div>
-                        <div class="text-muted small">${esc(t.category_name || k.label)}<span class="col-narrow"> · ${fmtDate(t.transaction_date)} · ${esc(txAccount(t))}</span></div>
-                    </div>
-                </div>
-            </td>
-            <td class="col-wide text-muted small num text-nowrap">${fmtDate(t.transaction_date)}</td>
-            <td class="col-wide text-muted small">${esc(txAccount(t))}</td>
-            <td class="text-end pe-3 fw-bold num text-nowrap ${k.cls}">${txAmount(t)}</td>
-        </tr>`;
+    const groups = [];
+    transactions.forEach(t => {
+        const last = groups[groups.length - 1];
+        if (last && last.day === t.transaction_date) last.items.push(t);
+        else groups.push({ day: t.transaction_date, items: [t] });
+    });
+    box.innerHTML = groups.map(g => {
+        const net = g.items.reduce((s, t) => s + (TX_KINDS[t.transaction_type]?.sign || 0) * Number(t.amount), 0);
+        return `<div class="tx-day" role="presentation"><span>${esc(dayLabel(g.day))}</span><span class="num">${net ? money(net, { sign: true }) : ''}</span></div>`
+            + g.items.map(t => {
+                const k = TX_KINDS[t.transaction_type] || TX_KINDS.expense;
+                const time = fmtTime(t.created_at);
+                const state = txState(t);
+                return `<div class="tx-row" data-tx="${t.id}" tabindex="0" role="button" aria-label="${esc(t.description)}, ${txAmount(t)}">
+                    <span class="tx-time num">${esc(time)}</span>
+                    <span class="tx-who">${txTag(t)}<span>${esc(t.description)}</span></span>
+                    <span class="tx-amt num ${k.cls}">${txAmount(t)}</span>
+                    <span class="tx-meta">${[k.label === 'Gasto' || k.label === 'Ingreso' ? (t.category_name || k.label) : k.label, METHOD[t.payment_method] === txAccount(t) ? null : METHOD[t.payment_method], txAccount(t)].filter(Boolean).map(esc).join(' · ')}${state !== 'Registrado' ? ` · <span class="chip">${state}</span>` : ''}</span>
+                </div>`;
+            }).join('');
     }).join('');
+}
+
+async function loadInksAndPending() {
+    const [a, c, p] = await Promise.all([authFetch('/api/v1/accounts'), authFetch('/api/v1/cards'), authFetch('/api/v1/pending/count')]);
+    if (a.ok) (await a.json()).forEach(x => { inkOf.acc[x.id] = x.color; });
+    if (c.ok) (await c.json()).forEach(x => { inkOf.card[x.id] = x.color; });
+    if (p.ok) {
+        const { pending } = await p.json();
+        const note = document.getElementById('pendingNote');
+        note.hidden = !pending;
+        note.innerHTML = `<span>${pending} ${pending === 1 ? 'pago del iPhone por confirmar' : 'pagos del iPhone por confirmar'}</span><span>Revisar <i class="bi bi-chevron-right" aria-hidden="true"></i></span>`;
+    }
 }
 
 function openTxDetail(id) {
@@ -377,10 +441,14 @@ function openTxDetail(id) {
     const amountEl = document.getElementById('txDetailAmount');
     amountEl.textContent = txAmount(t);
     amountEl.className = `figure mb-3 ${k.cls}`;
-    const rows = [['Tipo', k.label], ['Categoría', t.category_name || '—'], ['Fecha', fmtDate(t.transaction_date)], ['Cuenta o tarjeta', txAccount(t)]];
+    const rows = [['Tipo', k.label], ['Categoría', t.category_name || '—'], ['Fecha', `${fmtDate(t.transaction_date)}${fmtTime(t.created_at) ? ' · ' + fmtTime(t.created_at) : ''}`], ['Método', METHOD[t.payment_method] || '—'], ['Cuenta o tarjeta', txAccount(t)], ['Estado', txState(t)]];
     if (t.notes) rows.push(['Notas', t.notes]);
     document.getElementById('txDetailList').innerHTML = rows.map(([x, y]) => `<dt>${x}</dt><dd>${esc(y)}</dd>`).join('');
     document.getElementById('txDetailAlert').className = 'alert d-none';
+    document.getElementById('txEditBtn').onclick = () => {
+        bootstrap.Modal.getInstance(document.getElementById('txDetailModal')).hide();
+        openTxForm(t);
+    };
     setupDangerZone(document.getElementById('txDangerZone'), async () => {
         const res = await authFetch(`/api/v1/transactions/${t.id}`, { method: 'DELETE' });
         if (!res.ok) {
@@ -408,203 +476,153 @@ document.getElementById('transactionsTableBody').addEventListener('keydown', (e)
 
 
 // Preparar Modal de Creación
-function prepareCreateModal() {
-    document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
-    document.getElementById('typeExpense').checked = true;
-    updateModalFormLayout();
+// ---------------------------------------------------------------------------
+// Formulario de movimiento (crear y editar)
+// ---------------------------------------------------------------------------
+let editingTx = null;
+
+function todayLocalISO() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function updateModalFormLayout() {
+function options(items, selected, label) {
+    return items.map(x => `<option value="${x.id}" ${String(x.id) === String(selected) ? 'selected' : ''}>${esc(label(x))}</option>`).join('');
+}
+
+function categoryOptionsFor(type, selected) {
+    const cats = allCategories.filter(c => c.category_type === type || c.category_type === 'both');
+    return `<option value="" disabled ${selected ? '' : 'selected'}>Elige…</option>${options(cats, selected, c => c.name)}`;
+}
+
+function selectField(id, label, html) {
+    return `<div class="col-md-6"><label class="form-label" for="${id}">${label}</label><select class="form-select" id="${id}" required>${html}</select></div>`;
+}
+
+/** Construye los campos según el tipo, con los valores de `tx` cuando se edita. */
+function updateModalFormLayout(tx = null) {
     const type = document.querySelector('input[name="txTypeRadio"]:checked').value;
-    const container = document.getElementById('dynamicFieldsContainer');
+    const box = document.getElementById('dynamicFieldsContainer');
+    const credit = allCards.filter(c => c.card_type === 'credit');
+    const accLabel = a => `${a.name} · ${a.bank_name}`;
+    let html = '';
 
     if (type === 'expense') {
-        const catOptions = allCategories.filter(c => c.category_type === 'expense' || c.category_type === 'both')
-            .map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-        const accOptions = allAccounts.map(a => `<option value="${a.id}">${a.name} (${a.bank_name} - Saldo: ${money(a.current_balance)})</option>`).join('');
-        const cardOptions = allCards.filter(c => c.card_type === 'credit')
-            .map(c => `<option value="${c.id}">${c.name} (${c.bank_name} - Disp: ${money(c.available_credit)})</option>`).join('');
-
-        container.innerHTML = `
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label small fw-semibold">Categoría de Gasto *</label>
-                    <select class="form-select" id="formCategoryId" required>
-                        <option value="" disabled selected>Selecciona categoría...</option>
-                        ${catOptions}
-                    </select>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label small fw-semibold">Método de Pago *</label>
-                    <select class="form-select" id="formPaymentMethod" onchange="toggleExpensePaymentSource()">
-                        <option value="debit_card">Cuenta Bancaria / Débito</option>
-                        <option value="credit_card">Tarjeta de Crédito</option>
-                        <option value="cash">Efectivo</option>
-                        <option value="bank_transfer">Transferencia Bancaria</option>
-                    </select>
-                </div>
-                <div class="col-12" id="sourceAccountField">
-                    <label class="form-label small fw-semibold">Cuenta de Origen / Pago *</label>
-                    <select class="form-select" id="formSourceAccountId" required>
-                        ${accOptions}
-                    </select>
-                </div>
-                <div class="col-12 d-none" id="sourceCardField">
-                    <label class="form-label small fw-semibold">Tarjeta de Crédito Utilizada *</label>
-                    <select class="form-select" id="formCardId">
-                        ${cardOptions.length > 0 ? cardOptions : '<option value="">No tienes tarjetas de crédito registradas</option>'}
-                    </select>
-                </div>
-            </div>`;
+        const sel = tx ? (tx.card_id && tx.payment_method === 'credit_card' ? `card:${tx.card_id}` : `acc:${tx.source_account_id}`) : '';
+        const medium = '<option value="" disabled ' + (sel ? '' : 'selected') + '>¿Con qué pagaste?</option>'
+            + `<optgroup label="Cuentas">${allAccounts.map(a => `<option value="acc:${a.id}" ${sel === `acc:${a.id}` ? 'selected' : ''}>${esc(accLabel(a))}</option>`).join('')}</optgroup>`
+            + (credit.length ? `<optgroup label="Tarjetas de crédito">${credit.map(c => `<option value="card:${c.id}" ${sel === `card:${c.id}` ? 'selected' : ''}>${esc(`${c.name} · ${c.last_four_digits}`)}</option>`).join('')}</optgroup>` : '');
+        html = selectField('formCategoryId', 'Categoría', categoryOptionsFor('expense', tx?.category_id))
+             + selectField('formMedium', 'Cuenta o tarjeta', medium);
     } else if (type === 'income') {
-        const catOptions = allCategories.filter(c => c.category_type === 'income' || c.category_type === 'both')
-            .map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-        const accOptions = allAccounts.map(a => `<option value="${a.id}">${a.name} (${a.bank_name})</option>`).join('');
-
-        container.innerHTML = `
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label small fw-semibold">Categoría de Ingreso *</label>
-                    <select class="form-select" id="formCategoryId" required>
-                        <option value="" disabled selected>Selecciona categoría...</option>
-                        ${catOptions}
-                    </select>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label small fw-semibold">Cuenta de Destino (Depósito) *</label>
-                    <select class="form-select" id="formSourceAccountId" required>
-                        ${accOptions}
-                    </select>
-                </div>
-            </div>`;
+        html = selectField('formCategoryId', 'Categoría', categoryOptionsFor('income', tx?.category_id))
+             + selectField('formSourceAccountId', 'Cuenta donde entra', options(allAccounts, tx?.source_account_id, accLabel));
     } else if (type === 'transfer') {
-        const accOptionsSrc = allAccounts.map(a => `<option value="${a.id}">${a.name} (${a.bank_name} - Saldo: ${money(a.current_balance)})</option>`).join('');
-        const accOptionsDest = allAccounts.map(a => `<option value="${a.id}">${a.name} (${a.bank_name})</option>`).join('');
-
-        container.innerHTML = `
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label small fw-semibold">Cuenta de Origen (Sale el dinero) *</label>
-                    <select class="form-select" id="formSourceAccountId" required>
-                        ${accOptionsSrc}
-                    </select>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label small fw-semibold">Cuenta de Destino (Recibe el dinero) *</label>
-                    <select class="form-select" id="formDestinationAccountId" required>
-                        ${accOptionsDest}
-                    </select>
-                </div>
-            </div>`;
-    } else if (type === 'card_payment') {
-        const accOptions = allAccounts.map(a => `<option value="${a.id}">${a.name} (${a.bank_name} - Saldo: ${money(a.current_balance)})</option>`).join('');
-        const cardOptions = allCards.filter(c => c.card_type === 'credit')
-            .map(c => `<option value="${c.id}">${c.name} (${c.bank_name} - Deuda: ${money(c.current_balance)})</option>`).join('');
-
-        container.innerHTML = `
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label small fw-semibold">Pagar desde Cuenta *</label>
-                    <select class="form-select" id="formSourceAccountId" required>
-                        ${accOptions}
-                    </select>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label small fw-semibold">Tarjeta de Crédito a Abonar *</label>
-                    <select class="form-select" id="formCardId" required>
-                        ${cardOptions}
-                    </select>
-                </div>
-            </div>`;
-    }
-}
-
-function toggleExpensePaymentSource() {
-    const method = document.getElementById('formPaymentMethod').value;
-    const accField = document.getElementById('sourceAccountField');
-    const cardField = document.getElementById('sourceCardField');
-
-    if (method === 'credit_card') {
-        accField.classList.add('d-none');
-        cardField.classList.remove('d-none');
-        document.getElementById('formSourceAccountId').required = false;
-        document.getElementById('formCardId').required = true;
+        html = selectField('formSourceAccountId', 'Desde', options(allAccounts, tx?.source_account_id, accLabel))
+             + selectField('formDestinationAccountId', 'Hacia', options(allAccounts, tx?.destination_account_id ?? allAccounts[1]?.id, accLabel));
     } else {
-        accField.classList.remove('d-none');
-        cardField.classList.add('d-none');
-        document.getElementById('formSourceAccountId').required = true;
-        document.getElementById('formCardId').required = false;
+        html = selectField('formSourceAccountId', 'Pagar desde', options(allAccounts, tx?.source_account_id, accLabel))
+             + selectField('formCardId', 'Tarjeta', options(credit, tx?.card_id, c => `${c.name} · deuda ${money(c.current_balance)}`));
     }
+    box.innerHTML = `<div class="row g-3">${html}</div>`;
 }
 
-// Crear Movimiento
+document.querySelectorAll('input[name="txTypeRadio"]').forEach(r => r.addEventListener('change', () => updateModalFormLayout()));
+
+function openTxForm(tx = null) {
+    editingTx = tx;
+    const form = document.getElementById('createTxForm');
+    form.reset();
+    document.getElementById('createTxAlert').className = 'alert d-none';
+    document.getElementById('txFormTitle').textContent = tx ? 'Editar movimiento' : 'Nuevo movimiento';
+    document.getElementById('createTxSubmitBtn').textContent = tx ? 'Guardar cambios' : 'Guardar';
+    const type = tx ? tx.transaction_type : 'expense';
+    document.querySelector(`input[name="txTypeRadio"][value="${type}"]`).checked = true;
+    document.getElementById('txAmount').value = tx ? amountInput(tx.amount) : '';
+    document.getElementById('txDate').value = tx ? tx.transaction_date : todayLocalISO();
+    document.getElementById('txDescription').value = tx ? tx.description : '';
+    document.getElementById('txNotes').value = tx?.notes || '';
+    updateModalFormLayout(tx);
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('createTxModal')).show();
+}
+
+// Compatibilidad con los botones existentes ("Nuevo movimiento" y ?nuevo=1)
+function prepareCreateModal() { openTxForm(null); }
+
+function readTxForm() {
+    const type = document.querySelector('input[name="txTypeRadio"]:checked').value;
+    const amount = parseAmountInput(document.getElementById('txAmount').value);
+    if (!amount) throw new Error('Escribe un monto válido, por ejemplo 12,50.');
+    const description = document.getElementById('txDescription').value.trim();
+    if (!description) throw new Error('Escribe una descripción.');
+    const val = id => document.getElementById(id)?.value || '';
+    const num = id => (val(id) ? parseInt(val(id), 10) : null);
+
+    // Se envían todos los campos (con null) para que al editar se limpien los que ya no aplican
+    const payload = {
+        transaction_type: type, amount, currency: 'USD', description,
+        notes: val('txNotes').trim() || null,
+        transaction_date: val('txDate'),
+        category_id: null, source_account_id: null, destination_account_id: null, card_id: null,
+        payment_method: 'bank_transfer',
+    };
+    if (type === 'expense') {
+        payload.category_id = num('formCategoryId');
+        const [kind, id] = val('formMedium').split(':');
+        if (!kind) throw new Error('Elige con qué pagaste.');
+        if (kind === 'card') {
+            payload.card_id = parseInt(id, 10);
+            payload.payment_method = 'credit_card';
+        } else {
+            payload.source_account_id = parseInt(id, 10);
+            const acc = allAccounts.find(a => String(a.id) === id);
+            payload.payment_method = acc?.account_type === 'cash' ? 'cash' : 'debit_card';
+        }
+    } else if (type === 'income') {
+        payload.category_id = num('formCategoryId');
+        payload.source_account_id = num('formSourceAccountId');
+    } else if (type === 'transfer') {
+        payload.source_account_id = num('formSourceAccountId');
+        payload.destination_account_id = num('formDestinationAccountId');
+    } else {
+        payload.source_account_id = num('formSourceAccountId');
+        payload.card_id = num('formCardId');
+    }
+    if ((type === 'expense' || type === 'income') && !payload.category_id) throw new Error('Elige una categoría.');
+    return payload;
+}
+
 document.getElementById('createTxForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const alertBox = document.getElementById('createTxAlert');
-    const submitBtn = document.getElementById('createTxSubmitBtn');
-    const spinner = document.getElementById('createTxSpinner');
-
+    const btn = document.getElementById('createTxSubmitBtn');
     alertBox.className = 'alert d-none';
-    submitBtn.disabled = true;
-    spinner.classList.remove('d-none');
-
-    const type = document.querySelector('input[name="txTypeRadio"]:checked').value;
-    const amount = parseFloat(document.getElementById('txAmount').value) || 0;
-    const txDate = document.getElementById('txDate').value;
-    const desc = document.getElementById('txDescription').value.trim();
-    const notes = document.getElementById('txNotes').value.trim() || null;
-
-    let payload = {
-        transaction_type: type,
-        amount: amount,
-        currency: 'USD',
-        description: desc,
-        notes: notes,
-        transaction_date: txDate,
-        payment_method: 'cash'
-    };
-
-    if (type === 'expense') {
-        payload.category_id = parseInt(document.getElementById('formCategoryId').value) || null;
-        payload.payment_method = document.getElementById('formPaymentMethod').value;
-        if (payload.payment_method === 'credit_card') {
-            payload.card_id = parseInt(document.getElementById('formCardId').value) || null;
-        } else {
-            payload.source_account_id = parseInt(document.getElementById('formSourceAccountId').value) || null;
-        }
-    } else if (type === 'income') {
-        payload.category_id = parseInt(document.getElementById('formCategoryId').value) || null;
-        payload.source_account_id = parseInt(document.getElementById('formSourceAccountId').value) || null;
-        payload.payment_method = 'bank_transfer';
-    } else if (type === 'transfer') {
-        payload.source_account_id = parseInt(document.getElementById('formSourceAccountId').value) || null;
-        payload.destination_account_id = parseInt(document.getElementById('formDestinationAccountId').value) || null;
-        payload.payment_method = 'bank_transfer';
-    } else if (type === 'card_payment') {
-        payload.source_account_id = parseInt(document.getElementById('formSourceAccountId').value) || null;
-        payload.card_id = parseInt(document.getElementById('formCardId').value) || null;
-        payload.payment_method = 'bank_transfer';
-    }
-
+    let payload;
     try {
-        const res = await authFetch('/api/v1/transactions', {
-            method: 'POST',
+        payload = readTxForm();
+    } catch (err) {
+        alertBox.className = 'alert alert-danger';
+        alertBox.textContent = err.message;
+        return;
+    }
+    btn.disabled = true;
+    try {
+        const res = await authFetch(editingTx ? `/api/v1/transactions/${editingTx.id}` : '/api/v1/transactions', {
+            method: editingTx ? 'PUT' : 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Error al registrar movimiento');
-
+        if (!res.ok) throw new Error(apiError(data, 'No se pudo guardar el movimiento.'));
         bootstrap.Modal.getInstance(document.getElementById('createTxModal')).hide();
-        document.getElementById('createTxForm').reset();
+        showAlert('success', editingTx ? 'Movimiento actualizado y saldos recalculados.' : 'Movimiento registrado.');
         await loadBaseData();
         loadTransactions();
     } catch (err) {
-        alertBox.className = 'alert alert-danger d-block';
+        alertBox.className = 'alert alert-danger';
         alertBox.textContent = err.message;
     } finally {
-        submitBtn.disabled = false;
-        spinner.classList.add('d-none');
+        btn.disabled = false;
     }
 });
 
@@ -625,8 +643,8 @@ async function loadCategoriesList() {
                                 <i class="bi ${c.icon}"></i>
                             </span>
                             <div>
-                                <span class="fw-semibold small d-block">${c.name}</span>
-                                <span class="badge ${c.category_type === 'income' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} very-small" style="font-size: 0.65rem;">
+                                <span class="fw-semibold small d-block">${esc(c.name)}</span>
+                                <span class="badge ${c.category_type === 'income' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} very-small">
                                     ${c.category_type === 'income' ? 'Ingreso' : 'Gasto'}
                                 </span>
                             </div>
@@ -689,12 +707,11 @@ async function deleteCategory(catId) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    await loadBaseData();
+    await Promise.all([loadBaseData(), loadInksAndPending()]);
     loadTransactions();
     // Acceso directo desde el Resumen: /transactions?nuevo=1 abre el formulario
     if (new URLSearchParams(location.search).has('nuevo')) {
         prepareCreateModal();
-        bootstrap.Modal.getOrCreateInstance(document.getElementById('createTxModal')).show();
         history.replaceState(null, '', '/transactions');
     }
 });

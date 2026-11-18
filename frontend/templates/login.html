@@ -1,62 +1,67 @@
-{% extends "base.html" %}
+{% extends "auth_base.html" %}
 
 {% block title %}Iniciar sesión · FinancialApp{% endblock %}
-{% block body_class %}auth{% endblock %}
 
-{% block body %}
-<main class="auth-main">
-    <p class="auth-brand">FinancialApp</p>
-    <form class="auth-panel" id="loginForm" novalidate>
-        <h1>Iniciar sesión</h1>
-        <div id="alertBox" class="alert d-none" role="alert"></div>
+{% block auth %}
+<h1 class="auth-title">Iniciar sesión</h1>
+<p class="auth-lead">Entra para ver tus cuentas y movimientos.</p>
 
-        <div class="mb-3">
-            <label for="email" class="form-label">Correo</label>
-            <input type="email" class="form-control" id="email" required autocomplete="email" inputmode="email">
-        </div>
-        <div class="mb-4">
+<div id="alertBox" class="alert d-none" role="alert"></div>
+
+<form id="loginForm" novalidate>
+    <div class="field">
+        <label for="email" class="form-label">Correo</label>
+        <input type="email" class="form-control" id="email" required autocomplete="email" inputmode="email" autofocus>
+        <div class="invalid-feedback">Escribe un correo válido.</div>
+    </div>
+    <div class="field">
+        <div class="d-flex justify-content-between align-items-baseline">
             <label for="password" class="form-label">Contraseña</label>
-            <div class="input-group">
-                <input type="password" class="form-control" id="password" required autocomplete="current-password">
-                <button class="btn btn-outline-secondary" type="button" id="togglePassword" aria-label="Mostrar contraseña"><i class="bi bi-eye"></i></button>
-            </div>
+            <a href="/forgot-password" class="auth-link small">¿Olvidaste tu contraseña?</a>
         </div>
-        <button type="submit" id="submitBtn" class="btn btn-primary w-100">Entrar</button>
-        <p class="auth-alt">¿Aún no tienes cuenta? <a href="/register">Crear cuenta</a></p>
-    </form>
-</main>
+        <div class="input-group has-validation">
+            <input type="password" class="form-control" id="password" required autocomplete="current-password">
+            <button class="btn btn-outline-secondary" type="button" id="togglePassword" aria-label="Mostrar contraseña"><i class="bi bi-eye"></i></button>
+            <div class="invalid-feedback">Escribe tu contraseña.</div>
+        </div>
+    </div>
+    <div class="form-check mb-4">
+        <input class="form-check-input" type="checkbox" id="remember" checked>
+        <label class="form-check-label" for="remember">Mantener la sesión iniciada en este dispositivo</label>
+    </div>
+    <button type="submit" id="submitBtn" class="btn btn-primary w-100 btn-lg-auth"><span class="label">Entrar</span></button>
+</form>
+
+<p class="auth-alt">¿Aún no tienes cuenta? <a href="/register">Crear una cuenta</a></p>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
 bindPasswordToggle('togglePassword', 'password');
+const form = document.getElementById('loginForm');
 
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
+form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const alertBox = document.getElementById('alertBox');
-    const btn = document.getElementById('submitBtn');
     alertBox.className = 'alert d-none';
-    btn.disabled = true;
-    btn.textContent = 'Entrando…';
+    if (!validateFields(form)) return;
+    const btn = document.getElementById('submitBtn');
+    setLoading(btn, true, 'Entrando…');
     try {
         const res = await fetch('/api/v1/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                email: document.getElementById('email').value.trim(),
-                password: document.getElementById('password').value,
-            }),
+            body: JSON.stringify({ email: form.email.value.trim(), password: form.password.value }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(apiError(data, 'Correo o contraseña incorrectos.'));
-        localStorage.setItem('financial_token', data.token.access_token);
-        localStorage.setItem('financial_user', JSON.stringify(data.user));
+        saveSession(data.token.access_token, data.user, document.getElementById('remember').checked);
         window.location.href = '/dashboard';
     } catch (err) {
         alertBox.className = 'alert alert-danger';
         alertBox.textContent = err.message;
-        btn.disabled = false;
-        btn.textContent = 'Entrar';
+        form.password.classList.add('is-invalid');
+        setLoading(btn, false);
     }
 });
 </script>
