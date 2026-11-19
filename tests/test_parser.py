@@ -62,3 +62,24 @@ def test_formatos_del_servidor():
     assert fmt_money(-1234.5) == "−$1.234,50"
     assert fmt_percent(84.0) == "84%"
     assert fmt_percent(10.5) == "10,5%"
+
+
+@pytest.mark.parametrize("text, amount, merchant, tx_type, card", [
+    # blu Diners Club
+    ("Notificación de consumo: hiciste una compra.\nHola! Consumiste $ 0,52 en DLOCAL*UBER RIDES Mr con tu "
+     "Discover XX 484 . Si no lo hiciste, escribe un SMS con BLOQUEO 31004 al 365.", "0.52", "UBER RIDES Mr", "expense", "484"),
+    ("¡Se anuló tu compra!\nHola! La transaccion con tu tarjeta Discover 484 por el valor de USD 0,52 fue anulada "
+     "el 2026-11-15 19:34", "0.52", "Anulación de compra", "income", "484"),
+    # Banco del Pacífico
+    ("Consumo realizado\nPacifico informa que a las 15:39 realizo un consumo con su tarjeta TITULAR MC 9742 de $5.23 "
+     "en ATIMASA ESTACION DE SERVICIO A", "5.23", "ATIMASA ESTACION DE SERVICIO A", "expense", "9742"),
+    # Apple Wallet (Banco Pichincha)
+    ("Banco Pichincha\nKfc K071 San Luis Shop, Ruminahui, Pichincha\n$5.99", "5.99", "Kfc K071 San Luis Shop", "expense", None),
+    ("Banco Pichincha\nTrip, Quito, Pichincha\n$60.00", "60.00", "Trip", "expense", None),
+])
+def test_notificaciones_de_bancos(text, amount, merchant, tx_type, card):
+    parsed = parse_notification_text(text)
+    assert parsed.amount == Decimal(amount)
+    assert parsed.merchant == merchant
+    assert parsed.transaction_type == tx_type
+    assert parsed.card_hint == card

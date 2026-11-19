@@ -111,6 +111,30 @@ class ParsedNotification:
     amount: Optional[Decimal]
     merchant: str
     transaction_type: str          # "expense" | "income" | "transfer"
+    card_hint: Optional[str] = None  # últimos dígitos de la tarjeta, si la notificación los trae
+
+
+# "con tu Discover XX 484", "tarjeta TITULAR MC 9742", "Visa ****1234"
+_CARD_DIGITS = re.compile(
+    r"(?:x{2,}|\*{2,}|tarjeta|discover|visa|mastercard|master|mc|diners|amex)[^\d\n]{0,25}?(\d{3,4})\b",
+    re.IGNORECASE,
+)
+# Prefijos de procesadores de pago: "DLOCAL*UBER RIDES", "PAYPAL *SPOTIFY", "SQ *CAFE"
+_PROCESSOR_PREFIX = re.compile(r"^(?:dlocal|paypal|sq|mercadopago|merpago|pp|google|apple)\s*\*\s*", re.IGNORECASE)
+_REVERSAL_WORDS = ("anulo", "anulada", "anulado", "anulacion", "reverso", "reversado", "reversada", "devolucion")
+
+
+def card_hint_from_text(text: str) -> Optional[str]:
+    match = _CARD_DIGITS.search(text or "")
+    return match.group(1) if match else None
+
+
+def clean_place(name: str) -> str:
+    """'Kfc K071 San Luis Shop, Ruminahui, Pichincha' -> 'Kfc K071 San Luis Shop'; 'DLOCAL*UBER' -> 'UBER'."""
+    name = _PROCESSOR_PREFIX.sub("", (name or "").strip())
+    if name.count(",") >= 1:
+        name = name.split(",")[0]
+    return name.strip(" .,;-")
 
 
 INCOME_WORDS = (
@@ -165,9 +189,27 @@ def parse_notification_text(raw_text: str) -> ParsedNotification:
     Si no encuentra el monto devuelve amount=None (nunca inventa un valor).
     """
     raw = unicodedata.normalize("NFC", raw_text or "")
+    parsed = _parse_notification(raw)
+    parsed.card_hint = card_hint_from_text(raw)
+    if parsed.merchant:
+        parsed.merchant = clean_place(parsed.merchant) or parsed.merchant
+    return parsed
+
+
+def _parse_notification(raw: str) -> ParsedNotification:
+    flat = strip_accents(re.sub(r"\s+", " ", raw)).lower()
+    # Anulaciones y reversos: el dinero vuelve; nunca se registran como gasto
+    if any(w in flat for w in _REVERSAL_WORDS):
+        amount_match = re.search(_AMOUNT, raw, re.IGNORECASE)
+        return ParsedNotification(parse_amount(amount_match.group(1)) if amount_match else None,
+                                  "Anulación de compra", "income")
     # Atajos entrega el título y el cuerpo en líneas separadas: se prueba primero cada línea
     # (de abajo hacia arriba: el cuerpo suele traer más datos), luego el texto completo
     lines = [ln for ln in (re.sub(r"\s+", " ", x).strip() for x in raw.splitlines()) if ln]
+    # Apple Wallet: "Banco Pichincha" / "Kfc K071 San Luis Shop, Ruminahui, P..." / "$5.99"
+    if len(lines) >= 2 and re.fullmatch(_AMOUNT, lines[-1], re.IGNORECASE):
+        return ParsedNotification(parse_amount(re.fullmatch(_AMOUNT, lines[-1], re.IGNORECASE).group(1)),
+                                  clean_place(lines[-2]) or lines[-2], "expense")
     if len(lines) > 1:
         for line in reversed(lines):
             parsed = _parse_line(line, strict=True)

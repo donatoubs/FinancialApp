@@ -6,6 +6,7 @@ Servicio de la Bandeja de Pendientes:
 """
 
 import hashlib
+import re
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import List, Optional, Tuple
@@ -109,10 +110,14 @@ def _match_card_hint(cards: List[Card], hint: str) -> Optional[Card]:
     hint_n = _norm_name(hint)
     if not hint_n:
         return None
-    # 1. Últimos 4 dígitos
+    # 1. Últimos dígitos (algunos bancos muestran solo 3: "XX 484" coincide con "2484")
     for c in cards:
         if c.last_four_digits and c.last_four_digits in hint_n:
             return c
+    for digits in re.findall(r"\d{3,4}", hint_n):
+        tail = [c for c in cards if c.last_four_digits and c.last_four_digits.endswith(digits)]
+        if len(tail) == 1:
+            return tail[0]
     # 2. Nombre de la tarjeta contenido en el texto (o viceversa)
     for c in cards:
         name = _norm_name(c.name)

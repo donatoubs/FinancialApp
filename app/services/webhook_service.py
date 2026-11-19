@@ -21,7 +21,7 @@ from app.models.pending import PendingStatus, PendingTransaction
 from app.models.user import User
 from app.schemas.webhook import IOSWebhookPayload, WebhookResponse
 from app.services import pending_service
-from app.services.notification_parser import parse_amount, parse_notification_text
+from app.services.notification_parser import clean_place, parse_amount, parse_notification_text
 from app.utils.formatting import fmt_money
 
 
@@ -71,14 +71,14 @@ def _detect_source(payload: IOSWebhookPayload) -> str:
 
 
 def _interpret(payload: IOSWebhookPayload, source: str):
-    """Devuelve (amount, merchant, tx_type) sin inventar valores."""
+    """Devuelve (amount, merchant, tx_type, card_hint) sin inventar valores."""
     explicit_type = (payload.transaction_type or "").strip().lower()
 
     if payload.raw_text and not payload.merchant:
         parsed = parse_notification_text(payload.raw_text)
         amount = parse_amount(payload.amount) if payload.amount is not None else parsed.amount
         tx_type = explicit_type if explicit_type in ("income", "expense", "transfer") else parsed.transaction_type
-        return amount, parsed.merchant, tx_type
+        return amount, parsed.merchant, tx_type, payload.card or parsed.card_hint
 
     amount = parse_amount(payload.amount)
     raw_merchant = (payload.merchant or "").strip()
@@ -86,7 +86,7 @@ def _interpret(payload: IOSWebhookPayload, source: str):
     if not raw_merchant or re.fullmatch(r"[\d.,$\s]+", raw_merchant):
         raw_merchant = "Consumo DeUna" if source == "deuna" else "Consumo Apple Pay"
     tx_type = "income" if explicit_type == "income" else "expense"
-    return amount, raw_merchant[:255], tx_type
+    return amount, (clean_place(raw_merchant) or raw_merchant)[:255], tx_type, payload.card
 
 
 def _pending_reason(payload: IOSWebhookPayload, tx_type: str, amount, chosen, has_medium: bool, source: str) -> Optional[str]:
@@ -122,7 +122,7 @@ def process_ios_webhook(db: Session, user: User, payload: IOSWebhookPayload) -> 
         raise HTTPException(status_code=400, detail="Envía 'amount' y 'merchant' (Apple Pay) o 'raw_text' (texto de la notificación).")
 
     source = _detect_source(payload)
-    amount, merchant, tx_type = _interpret(payload, source)
+    amount, merchant, tx_type, card_hint = _interpret(payload, source)
 
     # 1. Duplicados
     dedup_key, is_external = pending_service.build_dedup_key(
@@ -133,7 +133,7 @@ def process_ios_webhook(db: Session, user: User, payload: IOSWebhookPayload) -> 
         return WebhookResponse(
             success=True,
             status="duplicate",
-            message=f"Ya recibido: {fmt_money(duplicate.amount or 0)} en '{duplicate.merchant}'. No se registró de nuevo.",
+            message=f"↩️ Ya recibido · {fmt_money(duplicate.amount or 0)} · {duplicate.merchant}. No se registró de nuevo.",
             pending_id=duplicate.id,
             transaction_id=duplicate.transaction_id,
             amount=float(duplicate.amount) if duplicate.amount is not None else None,
@@ -143,7 +143,7 @@ def process_ios_webhook(db: Session, user: User, payload: IOSWebhookPayload) -> 
 
     # 2. Sugerencias
     category, account, card, reason, rule = pending_service.compute_suggestions(
-        db, user, merchant, tx_type, source, payload.card, payload.category
+        db, user, merchant, tx_type, source, card_hint, payload.category
     )
 
     pending = PendingTransaction(
@@ -154,7 +154,7 @@ def process_ios_webhook(db: Session, user: User, payload: IOSWebhookPayload) -> 
         amount=amount,
         merchant=merchant,
         transaction_type=tx_type,
-        card_hint=payload.card,
+        card_hint=card_hint,
         suggested_category_id=category.id if category else None,
         suggested_account_id=account.id if account else None,
         suggested_card_id=card.id if card else None,
@@ -197,11 +197,12 @@ def process_ios_webhook(db: Session, user: User, payload: IOSWebhookPayload) -> 
             notes=payload.notes or f"Registrado automáticamente desde el iPhone ({source})",
             tx_date=pending_service.to_response(pending).occurred_date,
         )
-        verb = "Ingreso" if tx_type == "income" else "Gasto"
+        medium = card.name if card else (account.name if account else None)
+        parts = [("+" if tx_type == "income" else "") + fmt_money(amount), category.name, merchant, medium]
         return WebhookResponse(
             success=True,
             status="registered",
-            message=f"{verb} de {fmt_money(amount)} en '{merchant}' registrado.",
+            message=("💰 " if tx_type == "income" else "✅ ") + " · ".join(p for p in parts if p),
             pending_id=pending.id,
             transaction_id=tx.id,
             amount=float(amount),
@@ -217,7 +218,7 @@ def process_ios_webhook(db: Session, user: User, payload: IOSWebhookPayload) -> 
     return WebhookResponse(
         success=True,
         status="pending",
-        message=f"Pendiente: {amount_txt} en '{merchant}'." + (f" {why}" if why else "") + " Confírmalo en FinancialApp.",
+        message=f"🕓 Pendiente · {amount_txt} · {merchant}" + (f"\n{why}" if why else "\nConfírmalo en la app."),
         pending_id=pending.id,
         amount=float(amount) if amount is not None else None,
         merchant=merchant,

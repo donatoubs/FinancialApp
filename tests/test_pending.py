@@ -149,3 +149,30 @@ def test_sin_cuenta_deuna_avisa_por_que_queda_pendiente(api):
                   "category": "Alimentación", "auto_register": True}).json()
     assert d["status"] == "pending"
     assert "crea una cuenta llamada DeUna" in d["message"]
+
+
+def test_mensaje_corto_para_la_notificacion(api):
+    api.account(name="DeUna", bank="DeUna", balance="5.00")
+    d = api.hook({"raw_text": "Pagaste $0,03 a Tienda X", "source": "deuna",
+                  "category": "Alimentación", "auto_register": True}).json()
+    assert d["message"].startswith("✅ $0,03 · Alimentaci")
+    assert d["message"].endswith("· Tienda X · DeUna")
+
+
+def test_blu_reconoce_la_tarjeta_por_sus_ultimos_digitos(api):
+    blu = api.card(name="Discover blu", last4="2484", brand="Discover")
+    api.card(name="Pacifico MC", last4="9742", brand="Mastercard")
+    d = api.hook({"raw_text": "Notificación de consumo: hiciste una compra.\nHola! Consumiste $ 0,52 en "
+                              "DLOCAL*UBER RIDES Mr con tu Discover XX 484 .", "source": "bank",
+                  "category": "Transporte", "auto_register": True}).json()
+    assert d["status"] == "registered", d
+    assert d["message"] == "✅ $0,52 · Transporte y Gasolina · UBER RIDES Mr · Discover blu"
+    assert api.card_balance(blu) == 0.52
+
+
+def test_anulacion_nunca_se_registra_sola(api):
+    api.card(name="Discover blu", last4="2484", brand="Discover")
+    d = api.hook({"raw_text": "¡Se anuló tu compra!\nLa transaccion con tu tarjeta Discover 484 por el valor de "
+                              "USD 0,52 fue anulada", "source": "bank", "category": "Transporte",
+                  "auto_register": True}).json()
+    assert d["status"] == "pending"
