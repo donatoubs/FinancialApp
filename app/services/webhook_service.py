@@ -77,7 +77,7 @@ def _interpret(payload: IOSWebhookPayload, source: str):
     if payload.raw_text and not payload.merchant:
         parsed = parse_notification_text(payload.raw_text)
         amount = parse_amount(payload.amount) if payload.amount is not None else parsed.amount
-        tx_type = explicit_type if explicit_type in ("income", "expense") else parsed.transaction_type
+        tx_type = explicit_type if explicit_type in ("income", "expense", "transfer") else parsed.transaction_type
         return amount, parsed.merchant, tx_type
 
     amount = parse_amount(payload.amount)
@@ -151,7 +151,8 @@ def process_ios_webhook(db: Session, user: User, payload: IOSWebhookPayload) -> 
     # 3. ¿Registrar directamente?
     has_medium = bool(account or card)
     wants_auto = (rule is not None and user.webhook_auto_confirm) or payload.auto_register
-    can_auto = wants_auto and amount is not None and category is not None and has_medium
+    # Las transferencias entre cuentas propias siempre se confirman a mano (hay que elegir origen y destino)
+    can_auto = wants_auto and tx_type != "transfer" and amount is not None and category is not None and has_medium
     if can_auto:
         # Validar el medio sugerido antes de tocar nada (p. ej. débito sin cuenta vinculada)
         try:

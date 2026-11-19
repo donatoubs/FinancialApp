@@ -21,6 +21,10 @@ from app.utils.formatting import fmt_money, fmt_percent
     ("Ana Torres te envió $12.30", "12.30", "De: Ana Torres", "income"),
     ("Banco Pichincha: Consumo por USD 1,234.56 en SUPERMAXI EL BOSQUE con tu tarjeta Visa", "1234.56", "SUPERMAXI EL BOSQUE", "expense"),
     ("Transferencia de $50.00 a Pedro Gómez exitosa", "50.00", "Pedro Gómez", "expense"),
+    # Formato real de Atajos: título y cuerpo en líneas separadas, con emoji
+    ("✅ Recargaste $0,01\nRecargaste $0,01 en tu cuenta Deuna! el 18 nov 2026", "0.01", "Recarga DeUna", "transfer"),
+    ("✅ Pagaste $3,25\nPagaste $3,25 a Tienda Doña Rosa", "3.25", "Tienda Doña Rosa", "expense"),
+    ("✅ Recibiste $10,00\nRecibiste $10,00 de Ana López", "10.00", "De: Ana López", "income"),
 ])
 def test_notificaciones(text, amount, merchant, tx_type):
     parsed = parse_notification_text(text)

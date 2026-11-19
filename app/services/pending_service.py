@@ -311,25 +311,49 @@ def learn_rule(db: Session, user_id: int, key_text: str, category_id: Optional[i
 
 
 def register_from_pending(db: Session, user: User, p: PendingTransaction, *, tx_type: str, amount: Decimal,
-                          category_id: int, account_id: Optional[int], card_id: Optional[int],
-                          description: str, notes: Optional[str], tx_date) -> Transaction:
+                          category_id: Optional[int], account_id: Optional[int], card_id: Optional[int],
+                          description: str, notes: Optional[str], tx_date,
+                          destination_account_id: Optional[int] = None) -> Transaction:
     """Crea el movimiento real a partir de un pendiente y lo marca como confirmado."""
     if p.status != PendingStatus.PENDING.value:
         raise HTTPException(status_code=400, detail="Este pendiente ya fue confirmado o descartado.")
 
-    src_account_id, final_card_id, method = resolve_payment(db, user.id, tx_type, p.source, account_id, card_id)
-    tx_in = TransactionCreate(
-        transaction_type=TransactionType.INCOME if tx_type == "income" else TransactionType.EXPENSE,
-        amount=amount,
-        currency=user.currency_preference or "USD",
-        category_id=category_id,
-        source_account_id=src_account_id,
-        card_id=final_card_id,
-        payment_method=method,
-        description=description.strip()[:255],
-        notes=notes,
-        transaction_date=tx_date,
-    )
+    if tx_type == "transfer":
+        # Dinero propio que pasa de una cuenta a otra (p. ej. recarga del banco a DeUna)
+        if not account_id or not destination_account_id:
+            raise HTTPException(status_code=400, detail="Elige la cuenta de origen y la de destino.")
+        owned = db.query(BankAccount.id).filter(
+            BankAccount.user_id == user.id, BankAccount.id.in_([account_id, destination_account_id])
+        ).count()
+        if owned != len({account_id, destination_account_id}):
+            raise HTTPException(status_code=400, detail="La cuenta indicada no existe o no te pertenece.")
+        tx_in = TransactionCreate(
+            transaction_type=TransactionType.TRANSFER,
+            amount=amount,
+            currency=user.currency_preference or "USD",
+            source_account_id=account_id,
+            destination_account_id=destination_account_id,
+            payment_method=PaymentMethod.BANK_TRANSFER,
+            description=description.strip()[:255],
+            notes=notes,
+            transaction_date=tx_date,
+        )
+    else:
+        if not category_id:
+            raise HTTPException(status_code=400, detail="Elige una categoría.")
+        src_account_id, final_card_id, method = resolve_payment(db, user.id, tx_type, p.source, account_id, card_id)
+        tx_in = TransactionCreate(
+            transaction_type=TransactionType.INCOME if tx_type == "income" else TransactionType.EXPENSE,
+            amount=amount,
+            currency=user.currency_preference or "USD",
+            category_id=category_id,
+            source_account_id=src_account_id,
+            card_id=final_card_id,
+            payment_method=method,
+            description=description.strip()[:255],
+            notes=notes,
+            transaction_date=tx_date,
+        )
 
     # Se marca antes para que quede en el mismo commit que el movimiento
     p.status = PendingStatus.CONFIRMED.value
@@ -346,7 +370,7 @@ def register_from_pending(db: Session, user: User, p: PendingTransaction, *, tx_
 
 def confirm_pending(db: Session, user: User, pending_id: int, data: PendingConfirm) -> Transaction:
     p = get_pending(db, user.id, pending_id)
-    if data.remember:
+    if data.remember and data.transaction_type != "transfer" and data.category_id:
         learn_rule(db, user.id, data.remember_key or _display_rule_key(p.merchant),
                    data.category_id, data.source_account_id, data.card_id)
     tx_date = data.transaction_date or to_response(p).occurred_date
@@ -360,6 +384,7 @@ def confirm_pending(db: Session, user: User, pending_id: int, data: PendingConfi
         description=data.description,
         notes=data.notes,
         tx_date=tx_date,
+        destination_account_id=data.destination_account_id,
     )
 
 

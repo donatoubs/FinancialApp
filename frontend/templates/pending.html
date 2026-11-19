@@ -124,10 +124,33 @@ function categoryOptions(type, selectedId) {
 function mediumOptions(type, p) {
     const selected = p.suggested_card_id ? `card:${p.suggested_card_id}` : (p.suggested_account_id ? `acc:${p.suggested_account_id}` : '');
     const acc = accounts.map(a => `<option value="acc:${a.id}" ${selected === `acc:${a.id}` ? 'selected' : ''}>${esc(a.name)} · ${esc(a.bank_name)}</option>`).join('');
-    const crd = type === 'income' ? '' : cards.map(c => `<option value="card:${c.id}" ${selected === `card:${c.id}` ? 'selected' : ''}>${esc(c.name)} · ${c.card_type === 'credit' ? 'crédito' : 'débito'} ${esc(c.last_four_digits)}</option>`).join('');
-    return '<option value="">¿Con qué pagaste?</option>'
+    const crd = type !== 'expense' ? '' : cards.map(c => `<option value="card:${c.id}" ${selected === `card:${c.id}` ? 'selected' : ''}>${esc(c.name)} · ${c.card_type === 'credit' ? 'crédito' : 'débito'} ${esc(c.last_four_digits)}</option>`).join('');
+    const prompt = type === 'transfer' ? '¿De qué cuenta salió?' : type === 'income' ? '¿A qué cuenta llegó?' : '¿Con qué pagaste?';
+    return `<option value="">${prompt}</option>`
         + (acc ? `<optgroup label="Cuentas">${acc}</optgroup>` : '')
         + (crd ? `<optgroup label="Tarjetas">${crd}</optgroup>` : '');
+}
+
+/** Cuenta destino de una transferencia; en una recarga de DeUna se sugiere la cuenta DeUna. */
+function destinationOptions(p) {
+    const isDeuna = /deuna/i.test(p.merchant || '') || p.source === 'deuna';
+    const guess = isDeuna ? accounts.find(a => /deuna/i.test(`${a.name} ${a.bank_name}`)) : null;
+    return '<option value="">¿A qué cuenta llegó?</option>' + accounts.map(a =>
+        `<option value="${a.id}" ${guess && guess.id === a.id ? 'selected' : ''}>${esc(a.name)} · ${esc(a.bank_name)}</option>`).join('');
+}
+
+/** Muestra u oculta los campos según el tipo (las transferencias no llevan categoría). */
+function applyType(form, type, p) {
+    const transfer = type === 'transfer';
+    form.querySelector('.f-category').hidden = transfer;
+    form.querySelector('.f-dest').hidden = !transfer;
+    form.querySelector('.f-remember').hidden = transfer;
+    form.category.required = !transfer;
+    form.destination.required = transfer;
+    form.querySelector('.f-medium label').textContent = transfer ? 'Desde' : type === 'income' ? 'Cuenta' : 'Cuenta o tarjeta';
+    if (!transfer) form.category.innerHTML = categoryOptions(type, type === p.transaction_type ? p.suggested_category_id : null);
+    form.medium.innerHTML = mediumOptions(type, type === 'expense' ? p : { ...p, suggested_card_id: null });
+    if (transfer) form.destination.innerHTML = destinationOptions(p);
 }
 
 function renderPending(items) {
@@ -145,10 +168,10 @@ function renderPending(items) {
     const noMedium = !accounts.length && !cards.length;
     list.innerHTML = (noMedium ? `<div class="alert alert-warning">Para confirmar necesitas al menos una <a class="alert-link" href="/accounts">cuenta</a> o <a class="alert-link" href="/cards">tarjeta</a>.</div>` : '')
         + items.map(p => {
-        const type = p.transaction_type === 'income' ? 'income' : 'expense';
+        const type = ['income', 'transfer'].includes(p.transaction_type) ? p.transaction_type : 'expense';
         const isNew = !seen.has(p.id);
         const amount = p.amount !== null
-            ? `<span class="figure pending-amount ${type === 'income' ? 'amount-in' : ''}">${money(Number(p.amount) * (type === 'income' ? 1 : -1), { sign: true })}</span>`
+            ? `<span class="figure pending-amount ${type === 'income' ? 'amount-in' : ''}">${type === 'transfer' ? money(Number(p.amount)) : money(Number(p.amount) * (type === 'income' ? 1 : -1), { sign: true })}</span>`
             : `<span class="badge bg-warning-subtle">Monto sin leer</span>`;
         return `
         <article class="pending-card" id="pending-${p.id}" aria-label="${esc(p.merchant)}">
@@ -167,6 +190,7 @@ function renderPending(items) {
                     <select class="form-select form-select-sm" id="type-${p.id}" name="type">
                         <option value="expense" ${type === 'expense' ? 'selected' : ''}>Gasto</option>
                         <option value="income" ${type === 'income' ? 'selected' : ''}>Ingreso</option>
+                        <option value="transfer" ${type === 'transfer' ? 'selected' : ''}>Entre mis cuentas</option>
                     </select>
                 </div>
                 <div class="col-6 col-md-3">
@@ -177,15 +201,19 @@ function renderPending(items) {
                     <label class="form-label" for="desc-${p.id}">Descripción</label>
                     <input type="text" class="form-control form-control-sm" id="desc-${p.id}" name="description" maxlength="255" required value="${esc(p.merchant)}">
                 </div>
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-md-6 f-category">
                     <label class="form-label" for="cat-${p.id}">Categoría</label>
                     <select class="form-select form-select-sm" id="cat-${p.id}" name="category" required>${categoryOptions(type, p.suggested_category_id)}</select>
                 </div>
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-md-6 f-medium">
                     <label class="form-label" for="med-${p.id}">Cuenta o tarjeta</label>
                     <select class="form-select form-select-sm" id="med-${p.id}" name="medium" required>${mediumOptions(type, p)}</select>
                 </div>
-                <div class="col-12 remember">
+                <div class="col-12 col-md-6 f-dest" hidden>
+                    <label class="form-label" for="dest-${p.id}">Hacia</label>
+                    <select class="form-select form-select-sm" id="dest-${p.id}" name="destination"></select>
+                </div>
+                <div class="col-12 remember f-remember">
                     <input class="form-check-input mt-0" type="checkbox" name="remember" id="remember-${p.id}" checked>
                     <label for="remember-${p.id}">Recordar para comercios que empiecen con</label>
                     <input type="text" class="form-control form-control-sm" name="remember_key" maxlength="120" aria-label="Texto del comercio a recordar" value="${esc(p.suggested_rule_key)}">
@@ -199,6 +227,7 @@ function renderPending(items) {
     }).join('');
 
     // Al verlos aquí dejan de estar marcados como nuevos (en la próxima visita)
+    document.querySelectorAll('#pendingList form[data-id]').forEach(f => applyType(f, f.type.value, pendingById[f.dataset.id]));
     localStorage.setItem(SEEN_KEY, JSON.stringify([...new Set([...seen, ...items.map(p => p.id)])].slice(-300)));
     if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
 }
@@ -216,12 +245,7 @@ async function loadPending() {
 document.getElementById('pendingList').addEventListener('change', (e) => {
     const form = e.target.form;
     if (!form) return;
-    if (e.target.name === 'type') {
-        const p = pendingById[form.dataset.id];
-        const type = e.target.value;
-        form.category.innerHTML = categoryOptions(type, null);
-        form.medium.innerHTML = mediumOptions(type, type === 'income' ? { ...p, suggested_card_id: null } : p);
-    }
+    if (e.target.name === 'type') applyType(form, e.target.value, pendingById[form.dataset.id]);
     if (e.target.name === 'remember') form.remember_key.disabled = !e.target.checked;
 });
 
@@ -236,15 +260,18 @@ document.getElementById('pendingList').addEventListener('submit', async (e) => {
         form.amount.focus();
         return;
     }
+    const transfer = form.type.value === 'transfer';
+    if (!validateFields(form)) return;
     const body = {
         transaction_type: form.type.value,
         amount,
-        category_id: parseInt(form.category.value, 10),
+        category_id: transfer ? null : parseInt(form.category.value, 10),
         description: form.description.value.trim(),
         source_account_id: kind === 'acc' ? parseInt(mediumId, 10) : null,
         card_id: kind === 'card' ? parseInt(mediumId, 10) : null,
-        remember: form.remember.checked,
-        remember_key: form.remember.checked ? form.remember_key.value.trim() : null,
+        destination_account_id: transfer ? parseInt(form.destination.value, 10) : null,
+        remember: !transfer && form.remember.checked,
+        remember_key: !transfer && form.remember.checked ? form.remember_key.value.trim() : null,
     };
     btn.disabled = true;
     try {

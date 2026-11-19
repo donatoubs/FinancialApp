@@ -110,7 +110,7 @@ _AMOUNT = r"(?:\$|USD|US\$|U\$S)\s*([0-9][0-9.,]*[0-9]|[0-9])"
 class ParsedNotification:
     amount: Optional[Decimal]
     merchant: str
-    transaction_type: str          # "expense" | "income"
+    transaction_type: str          # "expense" | "income" | "transfer"
 
 
 INCOME_WORDS = (
@@ -138,6 +138,10 @@ _A = r"(?:\$|USD|US\$|U\$S)\s*(?P<a>[0-9][0-9.,]*[0-9]|[0-9])"
 # Patrones ordenados de más específico a más genérico. Grupos con nombre: m (comercio), a (monto).
 # tipo None = se decide por las palabras de ingreso.
 _PATTERNS = [
+    # DeUna: "Recargaste $1,00 en tu cuenta Deuna!" (dinero propio del banco a DeUna)
+    ("transfer", rf"recargaste\s+{_A}\s+(?:en|a)\s+tu\s+cuenta\s+(?P<m>deuna)"),
+    # DeUna: "Enviaste $5 a Ana" / "Transferiste $5 a Ana"
+    ("expense", rf"enviaste\s+{_A}\s+a\s+(?P<m>.+)"),
     # DeUna: "Pagaste a Juan Pérez, por $4.50 el 17/11"
     ("expense", rf"pagaste\s+a\s+(?P<m>.+?)[,\s]+por\s+{_A}"),
     # DeUna: "Pagaste $4.50 a Cafetería Don Juan"
@@ -160,7 +164,21 @@ def parse_notification_text(raw_text: str) -> ParsedNotification:
     Extrae monto, comercio/persona y tipo de una notificación en texto.
     Si no encuentra el monto devuelve amount=None (nunca inventa un valor).
     """
-    text = re.sub(r"\s+", " ", unicodedata.normalize("NFC", raw_text or "").strip())
+    raw = unicodedata.normalize("NFC", raw_text or "")
+    # Atajos entrega el título y el cuerpo en líneas separadas: se prueba primero cada línea
+    # (de abajo hacia arriba: el cuerpo suele traer más datos), luego el texto completo
+    lines = [ln for ln in (re.sub(r"\s+", " ", x).strip() for x in raw.splitlines()) if ln]
+    if len(lines) > 1:
+        for line in reversed(lines):
+            parsed = _parse_line(line, strict=True)
+            if parsed:
+                return parsed
+    return _parse_line(re.sub(r"\s+", " ", raw).strip(), strict=False)
+
+
+def _parse_line(text: str, strict: bool) -> Optional["ParsedNotification"]:
+    """Interpreta una línea. Con strict=True devuelve None si ningún patrón conocido coincide."""
+    text = re.sub(r"^[^\w$]+", "", text)   # emojis o viñetas al inicio ("✅ Recargaste…")
     # Quitar prefijos tipo "DeUna:" o "Banco Pichincha:"
     text_body = re.sub(r"^[\w\s]{2,30}:\s*", "", text) if ":" in text[:32] else text
     lower = strip_accents(text_body).lower()
@@ -174,10 +192,15 @@ def parse_notification_text(raw_text: str) -> ParsedNotification:
             merchant = _clean_merchant(text_body[match.start("m"):match.end("m")])
             amount = parse_amount(match.group("a"))
             final_type = tx_type or ("income" if is_income else "expense")
+            if final_type == "transfer":
+                return ParsedNotification(amount, "Recarga DeUna" if merchant.lower() == "deuna" else f"Recarga {merchant}", "transfer")
             if merchant:
                 if final_type == "income" and not merchant.lower().startswith("de:"):
                     merchant = f"De: {merchant}"
                 return ParsedNotification(amount, merchant, final_type)
+
+    if strict:
+        return None
 
     # Genérico: primer monto que aparezca
     amount_match = re.search(_AMOUNT, text_body, re.IGNORECASE)

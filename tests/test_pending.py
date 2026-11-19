@@ -96,3 +96,22 @@ def test_otro_usuario_no_ve_ni_toca_pendientes_ajenos(api, other_api):
 def test_token_invalido(client):
     r = client.post("/api/v1/webhooks/ios", headers={"X-Webhook-Token": "fin_falso"}, json={"amount": 1, "merchant": "x"})
     assert r.status_code == 401
+
+
+def test_recarga_deuna_se_confirma_como_transferencia(api):
+    banco = api.account(name="Ahorros", balance="100.00")
+    deuna = api.account(name="DeUna", bank="DeUna", balance="0.00", account_type="savings")
+    r = api.hook({"raw_text": "✅ Recargaste $5,00\nRecargaste $5,00 en tu cuenta Deuna! el 18 nov 2026", "source": "deuna"})
+    assert r.status_code == 201 and r.json()["status"] == "pending"
+    p = next(x for x in api.get("/pending").json() if x["merchant"] == "Recarga DeUna")
+    assert p["transaction_type"] == "transfer"
+
+    # Sin cuenta destino no se puede confirmar
+    bad = api.post(f"/pending/{p['id']}/confirm", {"transaction_type": "transfer", "amount": "5", "description": "Recarga DeUna",
+                                                   "source_account_id": banco})
+    assert bad.status_code == 400
+    ok = api.post(f"/pending/{p['id']}/confirm", {"transaction_type": "transfer", "amount": "5", "description": "Recarga DeUna",
+                                                  "source_account_id": banco, "destination_account_id": deuna})
+    assert ok.status_code == 201, ok.text
+    assert api.account_balance(banco) == 95.0
+    assert api.account_balance(deuna) == 5.0

@@ -40,10 +40,11 @@ class PendingCount(BaseModel):
 
 class PendingConfirm(BaseModel):
     """Datos finales con los que el usuario confirma un pendiente."""
-    transaction_type: Literal["expense", "income"] = "expense"
+    transaction_type: Literal["expense", "income", "transfer"] = "expense"
     amount: Decimal = Field(..., gt=Decimal("0.00"))
-    category_id: int
-    source_account_id: Optional[int] = Field(None, description="Cuenta (débito, transferencia o efectivo)")
+    category_id: Optional[int] = Field(None, description="Obligatoria para gastos e ingresos")
+    source_account_id: Optional[int] = Field(None, description="Cuenta (débito, transferencia o efectivo); en transferencias, la de origen")
+    destination_account_id: Optional[int] = Field(None, description="Solo transferencias: cuenta que recibe el dinero")
     card_id: Optional[int] = Field(None, description="Tarjeta usada (crédito o débito)")
     description: str = Field(..., min_length=1, max_length=255)
     notes: Optional[str] = None
