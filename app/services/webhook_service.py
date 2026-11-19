@@ -89,6 +89,22 @@ def _interpret(payload: IOSWebhookPayload, source: str):
     return amount, raw_merchant[:255], tx_type
 
 
+def _pending_reason(payload: IOSWebhookPayload, tx_type: str, amount, chosen, has_medium: bool, source: str) -> Optional[str]:
+    """Explica en una frase por qué no se registró solo, para que se vea en la notificación del iPhone."""
+    if tx_type == "transfer":
+        return "Es un movimiento entre tus cuentas: elige de dónde salió."
+    if amount is None:
+        return "No pude leer el monto."
+    if not payload.category:
+        return None
+    if not chosen:
+        return f"No encontré la categoría '{payload.category}' en tu app."
+    if not has_medium:
+        return ("No sé de qué cuenta salió: crea una cuenta llamada DeUna."
+                if source == "deuna" else "No sé con qué cuenta o tarjeta pagaste.")
+    return None
+
+
 def _medium_label(account, card) -> Optional[str]:
     if card:
         return f"Tarjeta {card.name}"
@@ -150,7 +166,12 @@ def process_ios_webhook(db: Session, user: User, payload: IOSWebhookPayload) -> 
 
     # 3. ¿Registrar directamente?
     has_medium = bool(account or card)
-    wants_auto = (rule is not None and user.webhook_auto_confirm) or payload.auto_register
+    # El atajo solo puede pedir registro directo si la categoría elegida existe de verdad
+    # ("Revisar después" o una categoría vacía no deben caer en "Otros" sin preguntar).
+    chosen = pending_service.find_category_by_name(db, user.id, tx_type, payload.category) if payload.category else None
+    if chosen:
+        category = chosen
+    wants_auto = (rule is not None and user.webhook_auto_confirm) or (payload.auto_register and chosen is not None)
     # Las transferencias entre cuentas propias siempre se confirman a mano (hay que elegir origen y destino)
     can_auto = wants_auto and tx_type != "transfer" and amount is not None and category is not None and has_medium
     if can_auto:
@@ -192,10 +213,11 @@ def process_ios_webhook(db: Session, user: User, payload: IOSWebhookPayload) -> 
 
     db.commit()
     amount_txt = fmt_money(amount) if amount is not None else "monto sin leer"
+    why = _pending_reason(payload, tx_type, amount, chosen, has_medium, source) if payload.auto_register else None
     return WebhookResponse(
         success=True,
         status="pending",
-        message=f"Pendiente: {amount_txt} en '{merchant}'. Confírmalo en FinancialApp.",
+        message=f"Pendiente: {amount_txt} en '{merchant}'." + (f" {why}" if why else "") + " Confírmalo en FinancialApp.",
         pending_id=pending.id,
         amount=float(amount) if amount is not None else None,
         merchant=merchant,

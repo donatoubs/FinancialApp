@@ -115,3 +115,37 @@ def test_recarga_deuna_se_confirma_como_transferencia(api):
     assert ok.status_code == 201, ok.text
     assert api.account_balance(banco) == 95.0
     assert api.account_balance(deuna) == 5.0
+
+
+def test_atajo_deuna_pagaste_con_categoria_se_registra_en_la_cuenta_deuna(api):
+    api.account(name="Ahorros", bank="Banco Guayaquil")
+    deuna = api.account(name="DeUna", bank="DeUna", balance="20.00")
+    d = api.hook({"raw_text": "✅ Pagaste $3,25\nPagaste $3,25 a Tienda Doña Rosa", "source": "deuna",
+                  "category": "Alimentación", "auto_register": True}).json()
+    assert d["status"] == "registered", d
+    assert d["category"].startswith("Alimentaci")
+    assert api.account_balance(deuna) == 16.75
+
+
+def test_revisar_despues_no_cae_en_otros(api):
+    api.account(name="DeUna", bank="DeUna")
+    d = api.hook({"raw_text": "Pagaste $2,00 a Tienda X", "source": "deuna",
+                  "category": "Revisar después", "auto_register": True}).json()
+    assert d["status"] == "pending"
+    assert "No encontré la categoría" in d["message"]
+
+
+def test_ingreso_sin_categoria_no_se_registra_solo(api):
+    api.account(name="DeUna", bank="DeUna")
+    d = api.hook({"raw_text": "Recibiste $10,00 de Ana López", "source": "deuna",
+                  "category": "", "auto_register": True}).json()
+    assert d["status"] == "pending"
+
+
+def test_sin_cuenta_deuna_avisa_por_que_queda_pendiente(api):
+    api.account(name="Ahorros", bank="Banco Guayaquil")
+    api.account(name="Corriente", bank="Produbanco")
+    d = api.hook({"raw_text": "Pagaste $2,00 a Tienda X", "source": "deuna",
+                  "category": "Alimentación", "auto_register": True}).json()
+    assert d["status"] == "pending"
+    assert "crea una cuenta llamada DeUna" in d["message"]
